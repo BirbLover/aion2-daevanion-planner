@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aion 2 Daevanion Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: a night-sky workbench. Sticky crystal bar on top; board + results on the left, priorities on the right.
+   One deliberate dark look (the board's grade colours read best on dark), so colour-scheme is fixed to dark. */
+:root{
+ color-scheme:dark;
+ --ink:#0a111d;--panel:#111a2a;--panel-2:#0d1524;--raise:#18233a;--line:#24324b;--line-soft:#1b2740;
+ --text:#e6ecf5;--muted:#8e9cb4;--faint:#6a7892;
+ --aether:#7ccfe0;--aether-ink:#06222a;--aether-soft:#16323d;
+ --route:#f2cd55;--common:#b8aa73;--rare:#3aae72;--legend:#4a82cf;--unique:#f07b22;--start:#f0d26d;
+ --good:#83e79d;--bad:#ff7a84;--warn:#ffd77a;
+ --f-display:"Cinzel","Trajan Pro",Georgia,serif;
+ --f-body:"Manrope","Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+ --r:12px;--r-s:8px;
+}
+*{box-sizing:border-box}
+html{background:var(--ink)}
+body{margin:0;background:radial-gradient(1200px 500px at 15% -10%,#15233d 0%,transparent 60%),var(--ink);color:var(--text);font-family:var(--f-body);font-size:14px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ink)}
+.app{max-width:1720px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+button,input{font:inherit}
+button{background:var(--raise);color:var(--text);border:1px solid var(--line);border-radius:var(--r-s);padding:7px 11px;cursor:pointer;transition:background .12s,border-color .12s}
+button:hover{background:#203050;border-color:#34476a}
+button.active{background:var(--aether-soft);border-color:var(--aether);color:#dff6fb}
+:focus-visible{outline:2px solid var(--aether);outline-offset:2px}
+input[type=checkbox]{accent-color:var(--aether);width:15px;height:15px;cursor:pointer}
+
+/* header */
+.masthead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--aether)}
+h1{margin:2px 0 0;font-family:var(--f-display);font-weight:700;font-size:clamp(26px,4vw,38px);letter-spacing:.02em;line-height:1.1;text-wrap:balance}
+.credit{font-size:13px;color:var(--muted)}
+.credit b{color:var(--text);font-weight:700}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.steps li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line-soft);border-radius:var(--r);background:color-mix(in srgb,var(--panel) 70%,transparent);color:var(--muted);font-size:13px}
+.steps .n{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--aether-soft);color:var(--aether);font-weight:800;font-size:12px}
+.steps b{color:var(--text)}
+
+/* control bar */
+.controls{display:grid;gap:12px;padding:14px;border:1px solid var(--line);border-radius:var(--r);background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(6px);z-index:5}
+.field-label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.classrow{display:grid;gap:6px}
+.classbar{display:flex;gap:6px;flex-wrap:wrap}
+.classbar button{padding:7px 12px;font-weight:600}
+.runrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.budget{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.budget b{font-weight:700}
+input.crystal{width:120px;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:var(--r-s);padding:9px 10px;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+input.crystal:focus{border-color:var(--aether)}
+.hint{font-size:12px;color:var(--muted)}
+.spacer{flex:1}
+.accent{color:var(--muted);font-size:12px}
+.optimizeBtn{background:var(--aether);color:var(--aether-ink);border:1px solid var(--aether);font-weight:800;font-size:15px;padding:11px 22px;border-radius:10px;box-shadow:0 6px 18px #0007}
+.optimizeBtn:hover{background:#9adbea;border-color:#9adbea}
+.optimizeBtn:disabled{opacity:.75;cursor:wait}
+
+/* main grid */
+.layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr);gap:16px;align-items:start}
+.col{display:grid;gap:16px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.card-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.sec{margin:0;font-size:16px;font-weight:800}
+.sub{font-size:12px;color:var(--muted)}
+.priority-note{font-size:12px;color:var(--muted);margin:0 0 8px}
+.priority-note b{color:var(--text)}
+
+/* board tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:stretch}
+.tabwrap{display:inline-flex;align-items:center;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-s);padding:3px 4px 3px 7px}
+.tabwrap:has(> button:only-child){padding-left:3px}
+.tabwrap button{border:0;background:transparent;padding:6px 9px;font-weight:600}
+.tabwrap button.active{background:var(--aether-soft);color:#dff6fb}
+.tabwrap.disabled{opacity:.45}
+.tabsep{width:1px;align-self:stretch;background:var(--line);margin:0 10px}
+
+/* board */
+.boardwrap{overflow:auto;background:#060c16;border:1px solid var(--line-soft);border-radius:var(--r);padding:12px}
+.board{display:grid;gap:6px;justify-content:center;min-width:max-content}
+.node{width:55px;height:55px;border:2px solid #44535d;border-radius:9px;padding:4px;position:relative;display:flex;align-items:center;justify-content:center;text-align:center;font-size:9px;line-height:1.06;user-select:none;transition:.12s opacity,.12s filter,.12s box-shadow}
+.node.common{background:#2b2b24;border-color:#756d4e}.node.rare{background:#143b29;border-color:#33905d}.node.legend{background:#142d49;border-color:#3b70aa}.node.unique{background:#572709;border-color:#bc5d19}.node.none{background:#3e3520;border-color:#dabd58;color:#fff3bd}
+.node.dim{opacity:.18;filter:saturate(.35)}.node.sel{opacity:1}
+.node.route{box-shadow:0 0 0 3px var(--route),0 0 17px color-mix(in srgb,var(--route) 50%,transparent);z-index:3}
+.node .cost{position:absolute;right:3px;bottom:2px;font-size:8px;color:#f6db75}.node .txt{font-weight:700}
+.node.offerpath{outline:2px dashed var(--warn);outline-offset:2px;opacity:1;filter:none}
+.legend{display:flex;gap:6px 14px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px}
+.sw.ring{background:transparent;border:2px solid var(--route)}
+
+/* results */
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.metric{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:10px;padding:10px 12px}
+.metric b{font-size:22px;display:block;font-variant-numeric:tabular-nums;font-weight:800}
+.metric small{color:var(--muted);font-size:12px}
+.ok{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.status{padding:9px 12px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line-soft);color:#c3d0e2;font-size:13px;margin-top:10px}
+.dirty{color:var(--warn);font-weight:700}
+.offers{margin-top:10px;display:grid;gap:8px}.offers:empty{display:none}
+.offer{background:#1f1b0f;border:1px solid #6b5a22;border-radius:10px;padding:10px 12px;font-size:13px;color:#ece2bd}
+.offer.ok{background:#0f2219;border-color:#2c6b4a;color:#c7e8d4}
+.offer b{color:#fff}.offer .acts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.offer .acts button{padding:5px 10px;font-size:12px}
+.offer button.yes{background:var(--aether);color:var(--aether-ink);border-color:var(--aether);font-weight:700}
+.summaryPanel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 20px;margin-top:12px}
+.summaryGroup{min-width:0}
+.summaryTitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin:8px 0 4px}
+.sumrow{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+.sumrow:last-child{border-bottom:0}.sumrow b{font-variant-numeric:tabular-nums}
+.empty{color:var(--faint);font-size:12px;padding:5px 0}
+
+/* priorities */
+.groupTitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin:16px 0 7px}
+.priority-list{display:grid;gap:5px}
+.priority-item{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:9px;padding:7px 8px;cursor:grab}
+.priority-item:hover{border-color:var(--line)}
+.priority-item.off{opacity:.45}.priority-item .toggle{flex:0 0 auto}.priority-item.dragging{opacity:.4}
+.drag{font-size:15px;color:var(--faint);cursor:grab}
+.rank{width:22px;height:22px;flex:0 0 auto;border-radius:50%;background:var(--raise);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#bfcbe0}
+.mv{display:inline-flex;gap:3px;flex:0 0 auto}.mv button{padding:2px 7px;font-size:10px;line-height:1.3}
+.ptext{min-width:0;flex:1}.ptext b{font-size:13px}.ptext small{display:block;color:var(--muted);margin-top:1px;font-size:11px}
+.checkgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.choice{display:flex;gap:8px;align-items:flex-start;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:9px;padding:8px;font-size:13px;cursor:pointer;min-width:0}
+.choice:has(input:checked){border-color:#2f5866;background:#0f1f2b}
+.choice input{margin-top:2px;flex:0 0 auto}.choice small{display:block;color:var(--muted);margin-top:1px;font-size:11px}
+.modebar{display:flex;align-items:center;gap:6px;margin:16px 0 4px}.modebar button{padding:4px 10px;font-size:12px}
+.modebar .label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin-right:4px}
+.advanced-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.advrow{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:9px;padding:7px 8px;min-width:0}
+.advrow.off{opacity:.45}.advrow .ptext{flex:1}
+.countbox{width:54px;background:var(--ink);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:5px;text-align:center;font-variant-numeric:tabular-nums}
+.maxlbl{font-size:11px;color:var(--faint)}
+
+@media(min-width:1000px){.controls{position:sticky;top:env(safe-area-inset-top,0px)}}
+@media(max-width:1200px){.layout{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:760px){
+ .steps{grid-template-columns:minmax(0,1fr)}
+ .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .summaryPanel,.checkgrid,.advanced-grid{grid-template-columns:minmax(0,1fr)}
+ .optimizeBtn{width:100%}
+ #budgetHint,.spacer{display:none}
+ .tabsep{flex-basis:100%;height:0;width:auto;margin:2px 0;background:transparent}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header class="masthead">
+ <div>
+  <div class="eyebrow">Aion 2 · Daevanion boards</div>
+  <h1>Daevanion Planner</h1>
+ </div>
+ <div class="credit">Made by <b>BirbLover</b> &amp; <b>Canvique</b></div>
+</header>
+
+<ol class="steps">
+ <li><span class="n">1</span><span><b>Pick your class and enter your crystals.</b> Each board tab keeps its own settings.</span></li>
+ <li><span class="n">2</span><span><b>Tick what you want</b> in the Priorities panel, and drag your stats into order.</span></li>
+ <li><span class="n">3</span><span><b>Press Optimize.</b> The gold outline is the route; switch tabs to see each board.</span></li>
+</ol>
+
+<section class="controls" aria-label="Class and crystals">
+ <div class="classrow">
+  <span class="field-label">Class</span>
+  <div id="classbar" class="classbar"></div>
+ </div>
+ <div class="runrow">
+  <label class="budget" for="dBudget"><b id="budgetLabel">Daevanion Crystals:</b><input id="dBudget" class="crystal" type="text" inputmode="numeric" placeholder="e.g. 412"><span id="budgetExample" class="hint">e.g. 412 crystals</span></label>
+  <span class="spacer"></span>
+  <span id="budgetHint" class="accent">Set your priorities first, then run the optimizer when ready.</span>
+  <button id="optimizeBtn" class="optimizeBtn">Optimize</button>
+ </div>
+</section>
+
+<div class="layout">
+ <div class="col">
+  <section class="card" aria-label="Boards">
+   <div class="card-head"><h2 class="sec">Boards</h2><span class="sub">Untick a class board you haven't unlocked. Ariel and Azphel use their own crystals; leave them at 0 to skip them.</span></div>
+   <div id="boardTabs" class="tabs"></div>
+   <div class="boardwrap"><div id="board" class="board"></div></div>
+   <div class="legend">
+    <span><i class="sw ring"></i>On the route</span>
+    <span><i class="sw" style="background:var(--common)"></i>Stat · 1</span>
+    <span><i class="sw" style="background:var(--rare)"></i>Passive / green · 2</span>
+    <span><i class="sw" style="background:var(--legend)"></i>Skill / blue · 3</span>
+    <span><i class="sw" style="background:var(--unique)"></i>Unique / orange · 4</span>
+   </div>
+  </section>
+
+  <section class="card" aria-label="Results">
+   <div class="card-head"><h2 class="sec">Results</h2><span class="sub">Totals across all enabled boards</span></div>
+   <div class="metrics">
+    <div class="metric"><b id="boardCost">0</b><small>Spent on this board</small></div>
+    <div class="metric"><b id="totalCost">0</b><small>Spent in total</small></div>
+    <div class="metric"><b id="remain">0</b><small>Crystals left</small></div>
+    <div class="metric"><b id="specialsHit">0/0</b><small>Wanted levels reached</small></div>
+   </div>
+   <div id="classStatus" class="status"></div>
+   <div id="crossOffers" class="offers"></div>
+   <div class="summaryPanel">
+    <div class="summaryGroup"><div id="sumTitle1" class="summaryTitle">Stats</div><div id="statBuffs"></div></div>
+    <div class="summaryGroup"><div id="sumTitle2" class="summaryTitle">Skills — levels</div><div id="skillBuffs"></div></div>
+    <div class="summaryGroup"><div id="sumTitle3" class="summaryTitle">Passives — levels</div><div id="passiveBuffs"></div></div>
+    <div class="summaryGroup"><div id="sumTitle4" class="summaryTitle">Orange uniques</div><div id="uniqueBuffs"></div></div>
+   </div>
+  </section>
+ </div>
+
+ <section class="card" aria-label="Priorities">
+  <div class="card-head"><h2 class="sec"><span id="className"></span> priorities</h2></div>
+  <div id="prioNote" class="priority-note">The planner fills these in order: <b>ticked oranges</b>, then <b>ticked skills</b>, then <b>ticked passives</b>, then <b>as many ticked stats as possible</b> (ties go to the stat higher in the list). Unticked stats only get leftover crystals, in list order. Unticked skills, passives and oranges are skipped. Drag rows, or use ▲▼, to reorder.</div>
+  <div id="classChecklist"></div>
+ </section>
+</div>
+
+</div>
+<script>
+const RAW={"s":["PvP Damage Tolerance","PvP Damage Tolerance +1.5%","PvP Attack","PvP Attack +3","PvP Defense","PvP Defense +30","Status Effect Chance","Status Effect Chance +1%","PvP Critical Hit, PvP Critical Hit Resist","PvP Critical Hit +5","PvP Accuracy","PvP Accuracy +5","PvP Evasion","PvP Evasion +3","Status Effect Resist","Status Effect Resist +1%","PvP Critical Hit Resist","PvP Critical Hit Resist +5","PvP Damage Boost","PvP Damage Boost +1.5%","PvP Critical Hit","PvP Accuracy, PvP Evasion","PvP Attack, PvP Defense","Max MP","MP +50","Max HP","HP +100","Azphel - Start","","PvE Damage Boost","PvE Damage Boost +1.5%","Boss Attack","Boss Attack +3","PvE Attack, PvE Defense","PvE Attack +3","PvE Accuracy","PvE Accuracy +5","PvE Accuracy, PvE Evasion","Boss Defense","Boss Defense +30","PvE Evasion","PvE Evasion +5","PvE Attack","PvE Damage Tolerance","PvE Damage Tolerance +1.5%","PvE Defense","PvE Defense +30","Critical Hit Resist","Critical Hit Resist +10","Boss Attack, Boss Defense","Critical Hit","Critical Hit +10","Boss Damage Boost","Boss Damage Boost +1%","Boss Damage Tolerance","Boss Damage Tolerance +1%","Ariel - Start","Combat Speed","Combat Speed +1.5%","Attack","Attack Bonus +3","Critical Hit Resist +5","Skill Level Up - Crossguard","Crossguard +1","Skill Level Up - Wave Blow","Wave Blow +1","Skill Level Up - Protection Circle","Protection Circle +1","Critical Hit +5","Cooldown Reduction","Cooldown Reduction +1.5%","Skill Level Up - Dark Crush","Dark Crush +1","Defense","Defense Bonus +30","Skill Level Up - Blessing of Life","Blessing of Life +1","Skill Level Up - Charging Smash","Rushing Smash +1","Skill Level Up - Recuperation","Recuperation +1","Skill Level Up - Inspiring Spell","Inspiring Spell +1","Skill Level Up - Incandescent Blow","Incandescent Blow +1","Skill Level Up - Attack Preparation","Attack Preparation +1","Skill Level Up - Defiance","Defiance +1","Nezekan - Start","Skill Level Up - Gust Rampage","Gust Rampage +1","Skill Level Up - Onslaught","Onslaught +1","Skill Level Up - Tremor Crush","Tremor Crush +1","Skill Level Up - Impactful Crush","Impactful Crush +1","Skill Level Up - Heat Wave Blow","Heat Wave Blow +1","Skill Level Up - Spinning Strike","Spinning Strike +1","Damage Tolerance","Damage Tolerance +1.5%","Skill Level Up - Impact Hit","Impact Hit +1","Damage Boost","Damage Boost +1.5%","Skill Level Up - Wind's Promise","Wind's Promise +1","Skill Level Up - Survival Willpower","Survival Willpower +1","Skill Level Up - Earth's Promise","Earth's Promise +1","Skill Level Up - Raging Spell","Raging Spell +1","Zikel - Start","Critical Damage Boost","Critical Damage Boost +1.5%","Critical Damage Tolerance","Critical Damage Tolerance +1.5%","Vaizel - Start","Multi-Hit Resist","Multi-hit Resist +1.5%","Multi-Hit Chance","Multi-hit Chance +1.5%","Triniel - Start"],"C":{"Nezekan":{"rows":11,"cols":11,"n":[[810033,1,1,3,57,58],[810034,1,2,0,59,60],[810035,1,3,0,47,61],[810037,1,5,1,62,63],[810038,1,6,0,47,61],[810039,1,7,2,64,65],[810041,1,9,1,66,67],[810042,1,10,0,50,68],[810043,1,11,3,69,70],[810048,2,1,0,50,68],[810050,2,3,2,71,72],[810051,2,4,0,23,24],[810052,2,5,0,73,74],[810054,2,7,0,23,24],[810055,2,8,0,73,74],[810056,2,9,0,47,61],[810058,2,11,0,23,24],[810063,3,1,1,75,76],[810064,3,2,0,73,74],[810065,3,3,0,25,26],[810067,3,5,0,50,68],[810068,3,6,2,77,78],[810069,3,7,0,25,26],[810071,3,9,2,79,80],[810072,3,10,0,25,26],[810073,3,11,1,81,82],[810079,4,2,0,25,26],[810082,4,5,0,47,61],[810084,4,7,0,73,74],[810086,4,9,0,59,60],[810088,4,11,0,73,74],[810093,5,1,0,23,24],[810094,5,2,0,59,60],[810095,5,3,2,83,84],[810096,5,4,0,25,26],[810097,5,5,0,23,24],[810098,5,6,0,59,60],[810099,5,7,0,47,61],[810100,5,8,1,85,86],[810101,5,9,0,23,24],[810102,5,10,0,50,68],[810103,5,11,0,47,61],[810108,6,1,2,87,88],[810111,6,4,0,73,74],[810113,6,6,4,89,28],[810115,6,8,0,59,60],[810118,6,11,2,90,91],[810123,7,1,0,50,68],[810124,7,2,0,47,61],[810125,7,3,0,25,26],[810126,7,4,1,81,82],[810127,7,5,0,50,68],[810128,7,6,0,73,74],[810129,7,7,0,25,26],[810130,7,8,0,23,24],[810131,7,9,2,92,93],[810132,7,10,0,73,74],[810133,7,11,0,25,26],[810138,8,1,0,59,60],[810140,8,3,0,73,74],[810142,8,5,0,59,60],[810144,8,7,0,50,68],[810147,8,10,0,23,24],[810153,9,1,1,85,86],[810154,9,2,0,23,24],[810155,9,3,2,94,95],[810157,9,5,0,23,24],[810158,9,6,2,96,97],[810159,9,7,0,47,61],[810161,9,9,0,23,24],[810162,9,10,0,59,60],[810163,9,11,1,62,63],[810168,10,1,0,25,26],[810170,10,3,0,50,68],[810171,10,4,0,59,60],[810172,10,5,0,25,26],[810174,10,7,0,59,60],[810175,10,8,0,25,26],[810176,10,9,2,98,99],[810178,10,11,0,47,61],[810183,11,1,3,69,70],[810184,11,2,0,47,61],[810185,11,3,1,66,67],[810187,11,5,2,100,101],[810188,11,6,0,50,68],[810189,11,7,1,75,76],[810191,11,9,0,50,68],[810192,11,10,0,73,74],[810193,11,11,3,57,58]]},"Zikel":{"rows":11,"cols":11,"n":[[820033,1,1,3,102,103],[820034,1,2,0,50,68],[820035,1,3,0,23,24],[820036,1,4,0,47,61],[820037,1,5,2,90,91],[820038,1,6,0,73,74],[820039,1,7,1,104,105],[820040,1,8,0,59,60],[820041,1,9,2,100,101],[820042,1,10,0,73,74],[820043,1,11,3,106,107],[820048,2,1,0,59,60],[820050,2,3,1,108,109],[820052,2,5,0,25,26],[820055,2,8,0,23,24],[820058,2,11,0,50,68],[820063,3,1,2,92,93],[820064,3,2,0,25,26],[820065,3,3,0,73,74],[820067,3,5,0,59,60],[820068,3,6,0,23,24],[820069,3,7,2,77,78],[820070,3,8,0,47,61],[820071,3,9,0,23,24],[820072,3,10,1,110,111],[820073,3,11,0,59,60],[820078,4,1,0,50,68],[820080,4,3,0,23,24],[820081,4,4,0,47,61],[820082,4,5,1,112,113],[820084,4,7,0,50,68],[820086,4,9,0,50,68],[820088,4,11,0,47,61],[820093,5,1,0,73,74],[820094,5,2,0,25,26],[820095,5,3,2,96,97],[820097,5,5,0,50,68],[820099,5,7,0,23,24],[820100,5,8,1,114,115],[820101,5,9,0,25,26],[820102,5,10,0,59,60],[820103,5,11,2,83,84],[820109,6,2,0,59,60],[820112,6,5,0,73,74],[820113,6,6,4,116,28],[820114,6,7,0,59,60],[820117,6,10,0,73,74],[820123,7,1,2,79,80],[820124,7,2,0,73,74],[820125,7,3,0,23,24],[820126,7,4,1,110,111],[820127,7,5,0,25,26],[820129,7,7,0,47,61],[820131,7,9,2,64,65],[820132,7,10,0,23,24],[820133,7,11,0,59,60],[820138,8,1,0,50,68],[820140,8,3,0,47,61],[820142,8,5,0,47,61],[820144,8,7,1,108,109],[820145,8,8,0,50,68],[820146,8,9,0,25,26],[820148,8,11,0,47,61],[820153,9,1,0,73,74],[820154,9,2,1,114,115],[820155,9,3,0,25,26],[820156,9,4,0,50,68],[820157,9,5,2,94,95],[820158,9,6,0,25,26],[820159,9,7,0,73,74],[820161,9,9,0,59,60],[820162,9,10,0,23,24],[820163,9,11,2,98,99],[820168,10,1,0,47,61],[820171,10,4,0,23,24],[820174,10,7,0,23,24],[820176,10,9,1,112,113],[820178,10,11,0,73,74],[820183,11,1,3,106,107],[820184,11,2,0,59,60],[820185,11,3,2,71,72],[820186,11,4,0,73,74],[820187,11,5,1,104,105],[820188,11,6,0,59,60],[820189,11,7,2,87,88],[820190,11,8,0,50,68],[820191,11,9,0,25,26],[820192,11,10,0,47,61],[820193,11,11,3,102,103]]},"Vaizel":{"rows":11,"cols":11,"n":[[830033,1,1,3,117,118],[830034,1,2,0,47,61],[830035,1,3,1,75,76],[830037,1,5,0,47,61],[830038,1,6,2,90,91],[830039,1,7,0,59,60],[830040,1,8,1,66,67],[830041,1,9,0,47,61],[830042,1,10,0,25,26],[830043,1,11,3,119,120],[830048,2,1,0,50,68],[830050,2,3,0,59,60],[830051,2,4,0,50,68],[830052,2,5,0,23,24],[830054,2,7,0,73,74],[830056,2,9,0,73,74],[830058,2,11,0,23,24],[830063,3,1,0,73,74],[830064,3,2,2,77,78],[830065,3,3,0,25,26],[830067,3,5,2,64,65],[830068,3,6,0,50,68],[830069,3,7,0,23,24],[830070,3,8,0,25,26],[830071,3,9,2,79,80],[830072,3,10,0,59,60],[830073,3,11,1,85,86],[830079,4,2,0,47,61],[830082,4,5,0,50,68],[830084,4,7,1,112,113],[830087,4,10,0,47,61],[830093,5,1,0,59,60],[830094,5,2,0,23,24],[830095,5,3,0,73,74],[830096,5,4,1,110,111],[830097,5,5,0,25,26],[830098,5,6,0,59,60],[830099,5,7,0,47,61],[830100,5,8,0,73,74],[830101,5,9,2,71,72],[830102,5,10,0,25,26],[830103,5,11,0,50,68],[830108,6,1,2,98,99],[830111,6,4,0,23,24],[830113,6,6,4,121,28],[830115,6,8,0,25,26],[830118,6,11,2,92,93],[830123,7,1,0,47,61],[830124,7,2,0,23,24],[830125,7,3,2,100,101],[830126,7,4,0,59,60],[830127,7,5,0,50,68],[830128,7,6,0,73,74],[830129,7,7,0,23,24],[830130,7,8,1,108,109],[830131,7,9,0,59,60],[830132,7,10,0,25,26],[830133,7,11,0,73,74],[830139,8,2,0,50,68],[830142,8,5,1,104,105],[830144,8,7,0,47,61],[830147,8,10,0,50,68],[830153,9,1,1,114,115],[830154,9,2,0,73,74],[830155,9,3,2,83,84],[830156,9,4,0,47,61],[830157,9,5,0,25,26],[830158,9,6,0,23,24],[830159,9,7,2,96,97],[830161,9,9,0,23,24],[830162,9,10,2,94,95],[830163,9,11,0,59,60],[830168,10,1,0,25,26],[830170,10,3,0,59,60],[830172,10,5,0,59,60],[830174,10,7,0,25,26],[830175,10,8,0,47,61],[830176,10,9,0,73,74],[830178,10,11,0,47,61],[830183,11,1,3,119,120],[830184,11,2,0,23,24],[830185,11,3,0,50,68],[830186,11,4,1,81,82],[830187,11,5,0,73,74],[830188,11,6,2,87,88],[830189,11,7,0,50,68],[830191,11,9,1,62,63],[830192,11,10,0,50,68],[830193,11,11,3,117,118]]},"Triniel":{"rows":13,"cols":13,"n":[[840017,1,1,3,122,123],[840018,1,2,0,59,60],[840019,1,3,0,50,68],[840022,1,6,0,59,60],[840023,1,7,3,124,125],[840024,1,8,0,73,74],[840027,1,11,0,73,74],[840028,1,12,0,25,26],[840029,1,13,3,122,123],[840032,2,1,0,23,24],[840034,2,3,2,96,97],[840035,2,4,0,23,24],[840036,2,5,0,25,26],[840037,2,6,1,108,109],[840039,2,8,1,104,105],[840040,2,9,0,23,24],[840041,2,10,0,50,68],[840042,2,11,2,83,84],[840044,2,13,0,50,68],[840047,3,1,0,50,68],[840049,3,3,0,25,26],[840052,3,6,0,73,74],[840053,3,7,0,25,26],[840054,3,8,0,47,61],[840057,3,11,0,59,60],[840059,3,13,0,47,61],[840062,4,1,2,90,91],[840063,4,2,0,47,61],[840064,4,3,0,23,24],[840065,4,4,1,62,63],[840066,4,5,0,47,61],[840067,4,6,0,59,60],[840069,4,8,0,73,74],[840070,4,9,2,94,95],[840071,4,10,0,50,68],[840072,4,11,0,25,26],[840073,4,12,0,23,24],[840074,4,13,1,81,82],[840079,5,3,0,73,74],[840081,5,5,0,50,68],[840085,5,9,0,25,26],[840088,5,12,0,47,61],[840092,6,1,0,47,61],[840093,6,2,0,50,68],[840094,6,3,0,25,26],[840095,6,4,0,59,60],[840096,6,5,2,79,80],[840097,6,6,0,23,24],[840098,6,7,0,73,74],[840099,6,8,0,47,61],[840100,6,9,0,23,24],[840101,6,10,0,50,68],[840102,6,11,1,114,115],[840103,6,12,0,73,74],[840104,6,13,0,23,24],[840107,7,1,2,64,65],[840109,7,3,0,73,74],[840111,7,5,0,73,74],[840113,7,7,4,126,28],[840115,7,9,0,59,60],[840117,7,11,0,59,60],[840119,7,13,2,100,101],[840122,8,1,0,25,26],[840123,8,2,0,59,60],[840124,8,3,1,85,86],[840125,8,4,0,47,61],[840126,8,5,0,25,26],[840127,8,6,0,50,68],[840128,8,7,0,59,60],[840129,8,8,0,25,26],[840130,8,9,2,71,72],[840131,8,10,0,73,74],[840132,8,11,0,23,24],[840133,8,12,0,47,61],[840134,8,13,0,50,68],[840138,9,2,0,50,68],[840141,9,5,0,23,24],[840145,9,9,0,47,61],[840147,9,11,0,59,60],[840152,10,1,1,66,67],[840153,10,2,0,25,26],[840154,10,3,0,23,24],[840155,10,4,0,47,61],[840156,10,5,2,98,99],[840157,10,6,0,59,60],[840159,10,8,0,73,74],[840160,10,9,0,50,68],[840161,10,10,1,75,76],[840162,10,11,0,25,26],[840163,10,12,0,50,68],[840164,10,13,2,87,88],[840167,11,1,0,50,68],[840169,11,3,0,73,74],[840172,11,6,0,50,68],[840173,11,7,0,23,24],[840174,11,8,0,59,60],[840177,11,11,0,23,24],[840179,11,13,0,47,61],[840182,12,1,0,47,61],[840184,12,3,2,77,78],[840185,12,4,0,47,61],[840186,12,5,0,25,26],[840187,12,6,1,112,113],[840189,12,8,1,110,111],[840190,12,9,0,23,24],[840191,12,10,0,25,26],[840192,12,11,2,92,93],[840194,12,13,0,25,26],[840197,13,1,3,124,125],[840198,13,2,0,23,24],[840199,13,3,0,59,60],[840202,13,6,0,59,60],[840203,13,7,3,122,123],[840204,13,8,0,73,74],[840207,13,11,0,47,61],[840208,13,12,0,73,74],[840209,13,13,3,124,125]]}},"A":{"name":"Azphel","rows":15,"cols":15,"n":[[660001,1,1,3,0,1],[660002,1,2,0,2,3],[660003,1,3,0,4,5],[660004,1,4,2,6,7],[660006,1,6,1,8,9],[660007,1,7,0,10,11],[660008,1,8,3,0,1],[660010,1,10,1,8,9],[660011,1,11,0,12,13],[660012,1,12,2,14,15],[660013,1,13,0,16,17],[660014,1,14,0,2,3],[660015,1,15,3,18,19],[660016,2,1,0,20,9],[660019,2,4,0,12,13],[660020,2,5,0,2,3],[660021,2,6,0,4,5],[660023,2,8,0,12,13],[660025,2,10,0,10,11],[660028,2,13,0,4,5],[660030,2,15,0,10,11],[660031,3,1,1,21,11],[660032,3,2,0,16,17],[660033,3,3,0,10,11],[660034,3,4,1,22,3],[660036,3,6,0,16,17],[660037,3,7,1,21,11],[660038,3,8,0,23,24],[660039,3,9,0,4,5],[660040,3,10,2,6,7],[660041,3,11,0,20,9],[660042,3,12,0,25,26],[660043,3,13,1,21,11],[660044,3,14,0,20,9],[660045,3,15,1,22,3],[660048,4,3,0,4,5],[660052,4,7,0,20,9],[660054,4,9,0,12,13],[660056,4,11,0,2,3],[660058,4,13,0,16,17],[660061,5,1,2,6,7],[660062,5,2,0,2,3],[660063,5,3,0,12,13],[660065,5,5,2,14,15],[660066,5,6,0,16,17],[660067,5,7,0,4,5],[660068,5,8,2,6,7],[660069,5,9,0,16,17],[660070,5,10,1,22,3],[660071,5,11,0,12,13],[660072,5,12,0,4,5],[660073,5,13,2,14,15],[660076,6,1,0,16,17],[660078,6,3,1,8,9],[660079,6,4,0,10,11],[660080,6,5,0,20,9],[660082,6,7,0,10,11],[660085,6,10,0,10,11],[660088,6,13,0,20,9],[660089,6,14,0,10,11],[660090,6,15,1,8,9],[660091,7,1,0,20,9],[660095,7,5,0,2,3],[660096,7,6,0,12,13],[660097,7,7,1,22,3],[660098,7,8,0,25,26],[660099,7,9,0,2,3],[660100,7,10,2,14,15],[660101,7,11,0,4,5],[660102,7,12,0,23,24],[660103,7,13,1,21,11],[660105,7,15,0,12,13],[660106,8,1,3,18,19],[660107,8,2,0,2,3],[660108,8,3,0,16,17],[660111,8,6,0,20,9],[660113,8,8,4,27,28],[660115,8,10,0,20,9],[660118,8,13,0,16,17],[660119,8,14,0,2,3],[660120,8,15,3,18,19],[660121,9,1,0,12,13],[660123,9,3,1,21,11],[660124,9,4,0,25,26],[660125,9,5,0,4,5],[660126,9,6,2,14,15],[660127,9,7,0,2,3],[660128,9,8,0,23,24],[660129,9,9,1,8,9],[660130,9,10,0,12,13],[660131,9,11,0,2,3],[660135,9,15,0,20,9],[660136,10,1,1,8,9],[660137,10,2,0,10,11],[660138,10,3,0,20,9],[660141,10,6,0,10,11],[660144,10,9,0,10,11],[660146,10,11,0,20,9],[660147,10,12,0,10,11],[660148,10,13,1,22,3],[660150,10,15,0,16,17],[660153,11,3,2,14,15],[660154,11,4,0,4,5],[660155,11,5,0,12,13],[660156,11,6,1,22,3],[660157,11,7,0,16,17],[660158,11,8,2,6,7],[660159,11,9,0,4,5],[660160,11,10,0,16,17],[660161,11,11,2,14,15],[660163,11,13,0,12,13],[660164,11,14,0,2,3],[660165,11,15,2,6,7],[660168,12,3,0,16,17],[660170,12,5,0,2,3],[660172,12,7,0,12,13],[660174,12,9,0,20,9],[660178,12,13,0,4,5],[660181,13,1,1,22,3],[660182,13,2,0,20,9],[660183,13,3,1,21,11],[660184,13,4,0,23,24],[660185,13,5,0,20,9],[660186,13,6,2,6,7],[660187,13,7,0,4,5],[660188,13,8,0,25,26],[660189,13,9,1,21,11],[660190,13,10,0,16,17],[660192,13,12,1,8,9],[660193,13,13,0,10,11],[660194,13,14,0,16,17],[660195,13,15,1,21,11],[660196,14,1,0,10,11],[660198,14,3,0,4,5],[660201,14,6,0,10,11],[660203,14,8,0,12,13],[660205,14,10,0,4,5],[660206,14,11,0,2,3],[660207,14,12,0,12,13],[660210,14,15,0,20,9],[660211,15,1,3,18,19],[660212,15,2,0,2,3],[660213,15,3,0,16,17],[660214,15,4,2,14,15],[660215,15,5,0,12,13],[660216,15,6,1,8,9],[660218,15,8,3,0,1],[660219,15,9,0,10,11],[660220,15,10,1,22,3],[660222,15,12,2,6,7],[660223,15,13,0,4,5],[660224,15,14,0,2,3],[660225,15,15,3,0,1]]},"R":{"rows":15,"cols":15,"n":[[350001,1,1,3,29,30],[350002,1,2,0,31,32],[350003,1,3,1,33,34],[350007,1,7,0,35,36],[350008,1,8,3,29,30],[350009,1,9,0,25,26],[350011,1,11,1,37,36],[350012,1,12,0,38,39],[350013,1,13,0,40,41],[350014,1,14,0,42,34],[350015,1,15,3,43,44],[350016,2,1,0,35,36],[350018,2,3,0,38,39],[350019,2,4,0,40,41],[350020,2,5,0,45,46],[350021,2,6,2,47,48],[350022,2,7,0,42,34],[350024,2,9,1,49,32],[350026,2,11,0,31,32],[350028,2,13,2,50,51],[350030,2,15,0,31,32],[350031,3,1,0,45,46],[350032,3,2,2,52,53],[350034,3,4,1,49,32],[350037,3,7,0,31,32],[350038,3,8,0,40,41],[350039,3,9,0,35,36],[350040,3,10,0,38,39],[350041,3,11,0,42,34],[350042,3,12,0,40,41],[350043,3,13,0,45,46],[350044,3,14,0,35,36],[350045,3,15,1,33,34],[350047,4,2,0,42,34],[350049,4,4,0,35,36],[350050,4,5,0,42,34],[350051,4,6,0,38,39],[350052,4,7,1,37,36],[350055,4,10,2,47,48],[350057,4,12,1,49,32],[350059,4,14,0,40,41],[350061,5,1,1,37,36],[350062,5,2,0,38,39],[350063,5,3,0,31,32],[350064,5,4,2,54,55],[350067,5,7,0,45,46],[350070,5,10,0,45,46],[350072,5,12,0,35,36],[350073,5,13,0,38,39],[350074,5,14,2,52,53],[350076,6,1,0,45,46],[350079,6,4,0,40,41],[350081,6,6,2,50,51],[350082,6,7,0,40,41],[350083,6,8,0,25,26],[350084,6,9,1,33,34],[350085,6,10,0,31,32],[350087,6,12,0,42,34],[350089,6,14,0,31,32],[350091,7,1,0,23,24],[350092,7,2,1,49,32],[350093,7,3,0,35,36],[350094,7,4,1,33,34],[350095,7,5,0,38,39],[350096,7,6,0,31,32],[350098,7,8,0,42,34],[350100,7,10,0,38,39],[350101,7,11,2,54,55],[350102,7,12,0,40,41],[350103,7,13,0,45,46],[350104,7,14,1,37,36],[350105,7,15,0,42,34],[350106,8,1,3,43,44],[350108,8,3,0,25,26],[350111,8,6,0,35,36],[350112,8,7,0,45,46],[350113,8,8,4,56,28],[350114,8,9,0,45,46],[350115,8,10,0,35,36],[350118,8,13,0,23,24],[350120,8,15,3,43,44],[350121,9,1,0,42,34],[350122,9,2,1,37,36],[350123,9,3,0,45,46],[350124,9,4,0,40,41],[350125,9,5,2,54,55],[350126,9,6,0,38,39],[350128,9,8,0,42,34],[350130,9,10,0,31,32],[350131,9,11,0,38,39],[350132,9,12,1,49,32],[350133,9,13,0,35,36],[350134,9,14,1,33,34],[350135,9,15,0,25,26],[350137,10,2,0,31,32],[350139,10,4,0,42,34],[350141,10,6,0,31,32],[350142,10,7,1,49,32],[350143,10,8,0,23,24],[350144,10,9,0,40,41],[350145,10,10,2,50,51],[350147,10,12,0,40,41],[350150,10,15,0,45,46],[350152,11,2,2,52,53],[350153,11,3,0,38,39],[350154,11,4,0,35,36],[350156,11,6,0,45,46],[350159,11,9,0,45,46],[350162,11,12,2,54,55],[350163,11,13,0,31,32],[350164,11,14,0,38,39],[350165,11,15,1,37,36],[350167,12,2,0,40,41],[350169,12,4,1,33,34],[350171,12,6,2,47,48],[350174,12,9,1,37,36],[350175,12,10,0,38,39],[350176,12,11,0,42,34],[350177,12,12,0,35,36],[350179,12,14,0,42,34],[350181,13,1,1,49,32],[350182,13,2,0,35,36],[350183,13,3,0,45,46],[350184,13,4,0,40,41],[350185,13,5,0,42,34],[350186,13,6,0,38,39],[350187,13,7,0,35,36],[350188,13,8,0,40,41],[350189,13,9,0,31,32],[350192,13,12,1,33,34],[350194,13,14,2,52,53],[350195,13,15,0,45,46],[350196,14,1,0,31,32],[350198,14,3,2,50,51],[350200,14,5,0,31,32],[350202,14,7,1,33,34],[350204,14,9,0,42,34],[350205,14,10,2,47,48],[350206,14,11,0,45,46],[350207,14,12,0,40,41],[350208,14,13,0,38,39],[350210,14,15,0,35,36],[350211,15,1,3,43,44],[350212,15,2,0,42,34],[350213,15,3,0,40,41],[350214,15,4,0,38,39],[350215,15,5,1,37,36],[350217,15,7,0,23,24],[350218,15,8,3,29,30],[350219,15,9,0,35,36],[350223,15,13,1,49,32],[350224,15,14,0,31,32],[350225,15,15,3,29,30]]}};
+const KLS={"S":["Combat Speed","Combat Speed +1.5%","Attack","Attack Bonus +3","Critical Hit Resist","Critical Hit Resist +5","Skill Level Up - Earth Robe","Robe of Earth +1","Skill Level Up - Wish of Concentration","Wish of Concentration +1","Skill Level Up - Cold Snap","Cold Snap +1","Critical Hit","Critical Hit +5","Cooldown Reduction","Cooldown Reduction +1.5%","Skill Level Up - Flame Explosion","Blaze +1","Max MP","MP +50","Defense","Defense Bonus +30","Skill Level Up - Fire Mark","Fire Mark +1","Max HP","HP +100","Skill Level Up - Firestorm","Firestorm +1","Skill Level Up - Winter's Shackles","Winter's Shackles +1","Skill Level Up - Flame Robe","Robe of Flame +1","Skill Level Up - Ice Chain","Ice Chain +1","Skill Level Up - Absorb Essence","Absorb Essence +1","Skill Level Up - Defiance","Defiance +1","Nezekan - Start","","Skill Level Up - Flame Scattershot","Flame Scattershot +1","Skill Level Up - Flame Arrow","Flame Arrow +1","Skill Level Up - Frost Burst","Frost Burst +1","Skill Level Up - Bittercold Wind","Bittercold Wind +1","Skill Level Up - Frost","Frost +1","Skill Level Up - Hellfire","Hellfire +1","Damage Tolerance","Damage Tolerance +1.5%","Skill Level Up - Grace of Resistance","Grace of Resistance +1","Damage Boost","Damage Boost +1.5%","Skill Level Up - Vitality Evaporation","Vitality Evaporation +1","Skill Level Up - Revitalization Contract","Revitalization Contract +1","Skill Level Up - Grace of Enhancement","Grace of Enhancement +1","Skill Level Up - Robe of Cold","Robe of Cold +1","Zikel - Start","Critical Damage Boost","Critical Damage Boost +1.5%","Critical Damage Tolerance","Critical Damage Tolerance +1.5%","Vaizel - Start","Multi-Hit Resist","Multi-hit Resist +1.5%","Multi-Hit Chance","Multi-hit Chance +1.5%","Triniel - Start","Skill Level Up - Concentrated Fire","Concentrated Fire +1","Skill Level Up - Suppressing Arrow","Suppressing Arrow +1","Skill Level Up - Wind Vigor","Wind Vigor +1","Skill Level Up - Drill Dart","Drill Dart +1","Skill Level Up - Vigilant Eye","Vigilant Eye +1","Skill Level Up - Snare Shot","Snare Shot +1","Skill Level Up - Explosion Trap","Explosion Trap +1","Skill Level Up - Focused Eye","Focused Eye +1","Skill Level Up - Tempest Shot","Tempest Shot +1","Skill Level Up - Hunter's Resolve","Hunter's Resolve +1","Skill Level Up - Arrow Scattershot","Arrow Scattershot +1","Skill Level Up - Snipe","Snipe +1","Skill Level Up - Burst Arrow","Burst Arrow +1","Skill Level Up - Marking Shot","Marking Shot +1","Skill Level Up - Gale Arrow","Gale Arrow +1","Skill Level Up - Deadshot","Deadshot +1","Skill Level Up - Unyielding Resolve","Unyielding Resolve +1","Skill Level Up - Hunter's Soul","Hunter's Soul +1","Skill Level Up - Melee Shot","Melee Fire +1","Skill Level Up - Rooting Eye","Rooting Eye +1","Skill Level Up - Exploit Weakness","Exploit Weakness +1","Skill Level Up - Shadow Fall","Shadow Fall +1","Skill Level Up - Apply Poison","Apply Poison +1","Skill Level Up - Heart Gore","Heart Gore +1","Skill Level Up - Heightened Sixth Sense","Heightened Sixth Sense +1","Skill Level Up - Shadowstrike","Shadowstrike +1","Skill Level Up - Flash Slice","Flash Slice +1","Skill Level Up - Rear Smite","Rear Smite +1","Skill Level Up - Savage Roar","Savage Roar +1","Skill Level Up - Assault Stance","Assault Stance +1","Skill Level Up - Storm Rampage","Storm Rampage +1","Skill Level Up - Quick Slice","Quick Slice +1","Skill Level Up - Infiltrate","Infiltrate +1","Skill Level Up - Ambush","Ambush +1","Skill Level Up - Whirlwind Slice","Whirlwind Slice +1","Skill Level Up - Insignia Explosion","Insignia Explosion +1","Skill Level Up - Impact Hit","Impact Hit +1","Skill Level Up - Determination","Determination +1","Skill Level Up - Defense Break","Defense Break +1","Skill Level Up - Ambush Stance","Ambush Stance +1","Skill Level Up - Warding Shield","Warding Shield +1","Skill Level Up - Annihilate","Annihilate +1","Skill Level Up - Punishing Benediction","Punishing Benediction +1","Skill Level Up - Judgment","Judgment +1","Skill Level Up - Enhance Health","Enhance Health +1","Skill Level Up - Poach","Poach +1","Skill Level Up - Warding Strike","Warding Strike +1","Skill Level Up - Ironclad Defense","Ironclad Defense +1","Skill Level Up - Pummel","Pummel +1","Skill Level Up - Guarding Seal","Guarding Seal +1","Skill Level Up - Flash Rampage","Flash Rampage +1","Skill Level Up - Vicious Strike","Vicious Strike +1","Skill Level Up - Shield Rush","Shield Rush +1","Skill Level Up - Shield Smite","Shield Smite +1","Skill Level Up - Debilitating Smash","Debilitating Smash +1","Skill Level Up - Punishment","Punishment +1","Skill Level Up - Block Pain","Block Pain +1","Skill Level Up - Survival Willpower","Survival Willpower +1","Skill Level Up - Fury","Fury +1","Skill Level Up - Insulting Roar","Insulting Roar +1","Skill Level Up - Protection Armor","Protection Armor +1","Skill Level Up - Aerial Snare","Aerial Snare +1","Skill Level Up - Blood Absorption","Blood Absorption +1","Skill Level Up - Overhead Slam","Overhead Slam +1","Skill Level Up - Survival Stance","Survival Stance +1","Skill Level Up - Leaping Slam","Leaping Slam +1","Skill Level Up - Crushing Wave","Crushing Wave +1","Skill Level Up - Identify Weakness","Identify Weakness +1","Skill Level Up - Rending Blow","Rending Blow +1","Skill Level Up - Attack Preparation","Attack Preparation +1","Skill Level Up - Sword Aura Rampage","Sword Aura Rampage +1","Skill Level Up - Keen Strike","Keen Strike +1","Skill Level Up - Rush Strike","Rush Strike +1","Skill Level Up - Mocking Blade","Mocking Blade +1","Skill Level Up - Ankle Slice","Ankle Slice +1","Skill Level Up - Ruinous Blow","Ruinous Blow +1","Skill Level Up - Murderous Burst","Murderous Burst +1","Skill Level Up - Experienced Counterstrike","Experienced Counterstrike +1","Skill Level Up - Destructive Impulse","Destructive Impulse +1","Skill Level Up - Crossguard","Crossguard +1","Skill Level Up - Wave Blow","Wave Blow +1","Skill Level Up - Protection Circle","Protection Circle +1","Skill Level Up - Dark Crush","Dark Crush +1","Skill Level Up - Blessing of Life","Blessing of Life +1","Skill Level Up - Charging Smash","Rushing Smash +1","Skill Level Up - Recuperation","Recuperation +1","Skill Level Up - Inspiring Spell","Inspiring Spell +1","Skill Level Up - Incandescent Blow","Incandescent Blow +1","Skill Level Up - Gust Rampage","Gust Rampage +1","Skill Level Up - Onslaught","Onslaught +1","Skill Level Up - Tremor Crush","Tremor Crush +1","Skill Level Up - Impactful Crush","Impactful Crush +1","Skill Level Up - Heat Wave Blow","Heat Wave Blow +1","Skill Level Up - Spinning Strike","Spinning Strike +1","Skill Level Up - Wind's Promise","Wind's Promise +1","Skill Level Up - Earth's Promise","Earth's Promise +1","Skill Level Up - Raging Spell","Raging Spell +1","Skill Level Up - Empyrean Lords' Benediction","Empyrean Lords' Benediction +1","Skill Level Up - Radiant Recovery","Radiant Recovery +1","Skill Level Up - Empyrean Lords' Grace","Empyrean Lord's Grace +1","Skill Level Up - Chain of Torment","Chain of Torment +1","Skill Level Up - Warm Benediction","Warm Benediction +1","Skill Level Up - Debilitating Mark","Debilitating Mark +1","Skill Level Up - Condemnation","Condemnation +1","Skill Level Up - Healing Enhancement","Healing Enhancement +1","Skill Level Up - Judgment Thunder","Judgment Thunder +1","Skill Level Up - Immortal Veil","Immortal Veil +1","Skill Level Up - Lightning Strike Scattershot","Lightning Strike Scattershot +1","Skill Level Up - Earth's Retribution","Earth's Retribution +1","Skill Level Up - Healing Light","Healing Light +1","Skill Level Up - Divine Aura","Divine Aura +1","Skill Level Up - Light of Regeneration","Light of Regeneration +1","Skill Level Up - Bolt","Bolt +1","Skill Level Up - Heal Block","Heal Block +1","Skill Level Up - Radiant Benediction","Radiant Benediction +1","Skill Level Up - Earth's Grace","Earth's Grace +1","Skill Level Up - Prayer of Concentration","Prayer of Concentration +1","Skill Level Up - Spirit Protection","Spirit Protection +1","Skill Level Up - Soul's Cry","Soul's Cry +1","Skill Level Up - Spirit's Descent","Spirit's Descent +1","Skill Level Up - Jointstrike: Curse","Jointstrike: Curse +1","Skill Level Up - Spirit Strike","Spirit Strike +1","Skill Level Up - Summon: Fire Spirit","Summon: Fire Spirit +1","Skill Level Up - Dimensional Control","Dimensional Control +1","Skill Level Up - Corrode","Corrode +1","Skill Level Up - Combustion","Combustion +1","Skill Level Up - Spirit Revitalization","Spirit Revitalization +1","Skill Level Up - Rapid Scattershot","Rapid Scattershot +1","Skill Level Up - Cold Shock","Cold Shock +1","Skill Level Up - Summon: Wind Spirit","Summon: Wind Spirit +1","Skill Level Up - Summon: Water Spirit","Summon: Water Spirit +1","Skill Level Up - Summon: Earth Spirit","Summon: Earth Spirit +1","Skill Level Up - Elemental Fusion","Elemental Fusion +1","Skill Level Up - Mental Focus","Mental Focus +1","Skill Level Up - Element Unification","Element Unification +1","Skill Level Up - Spirit Communion","Spirit Communion +1","Skill Level Up - Consecutive Countercurrent","Consecutive Countercurrent +1"],"P":[[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15],[16,17],[18,19],[20,21],[22,23],[24,25],[26,27],[28,29],[30,31],[32,33],[34,35],[36,37],[38,39],[40,41],[42,43],[44,45],[46,47],[48,49],[50,51],[52,53],[54,55],[56,57],[58,59],[60,61],[62,63],[64,65],[66,39],[67,68],[69,70],[71,39],[72,73],[74,75],[76,39],[77,78],[79,80],[81,82],[83,84],[85,86],[87,88],[89,90],[91,92],[93,94],[95,96],[97,98],[99,100],[101,102],[103,104],[105,106],[107,108],[109,110],[111,112],[113,114],[115,116],[117,118],[119,120],[121,122],[123,124],[125,126],[127,128],[129,130],[131,132],[133,134],[135,136],[137,138],[139,140],[141,142],[143,144],[145,146],[147,148],[149,150],[151,152],[153,154],[155,156],[157,158],[159,160],[161,162],[163,164],[165,166],[167,168],[169,170],[171,172],[173,174],[175,176],[177,178],[179,180],[181,182],[183,184],[185,186],[187,188],[189,190],[191,192],[193,194],[195,196],[197,198],[199,200],[201,202],[203,204],[205,206],[207,208],[209,210],[211,212],[213,214],[215,216],[217,218],[219,220],[221,222],[223,224],[225,226],[227,228],[229,230],[231,232],[233,234],[235,236],[237,238],[239,240],[241,242],[243,244],[245,246],[247,248],[249,250],[251,252],[253,254],[255,256],[257,258],[259,260],[261,262],[263,264],[265,266],[267,268],[269,270],[271,272],[273,274],[275,276],[277,278],[279,280],[281,282],[283,284],[285,286],[287,288],[289,290],[291,292],[293,294],[295,296],[297,298],[299,300],[301,302],[303,304],[305,306],[307,308],[309,310],[311,312],[313,314],[315,316],[317,318],[319,320],[321,322],[323,324],[325,326],[327,328],[329,330],[331,332],[333,334],[335,336],[337,338],[339,340],[341,342],[343,344],[345,346],[347,348],[349,350]],"C":{"Sorcerer":{"Nezekan":[11,11,610033,"00300010010200204103050020620408105090060a3070f0060h2080i0090j00a0l0090m00a0n0020p0090u10b0v00a0w00c0y0060z20d1000c1220e1300c1410f1a00c1d0021f00a1h0011j00a1o0091p0011q20g1r00c1s0091t0011u0021v10h1w0091x0061y0022320i2600a2840j2a0012d20k2i0062j0022k00c2l10f2m0062n00a2o00c2p0092q20l2r00a2s00c2x0012z00a3100133006360093c10h3d0093e20m3g0093h20n3i0023k0093l0013m1033r00c3t0063u0013v00c3x0013y00c3z20o410024630747002481054a20p4b0064c10b4e0064f00a4g300"],"Zikel":[11,11,620033,"0030q0100602009030020420k0500a0610r070010820p0900a0a30s0f0010h10t0j00c0m0090p0060u20l0v00c0w00a0y0010z0091020d11002120091310u14001190061b0091c0021d10v1f0061h0061j0021o00a1p00c1q20n1s0061u0091v10w1w00c1x0011y20g240012700a2840x290012c00a2i20e2j00a2k0092l10u2m00c2o0022q2042r0092s0012x0062z002310023310t340063500c370023c00a3d10w3e00c3f0063g20m3h00c3i00a3k0013l0093m20o3r0023u0093x0093z10v4100a4630s47001482084900a4a10r4b0014c20i4d0064e00c4f0024g30q"],"Vaizel":[11,11,630033,"0030y010020210b040020520k0600107105080020900c0a30z0f0060h0010i0060j0090l00a0n00a0p0090u00a0v20d0w00c0y2040z006100091100c1220e130011410h1a0021d0061f10v1i0021o0011p0091q00a1r10u1s00c1t0011u0021v00a1w2081x00c1y0062320o26009284102a00c2d20l2i0022j0092k20p2l0012m0062n00a2o0092p10t2q0012r00c2s00a2y0063110r33002360063c10w3d00a3e20g3f0023g00c3h0093i20n3k0093l20m3m0013r00c3t0013v0013x00c3y0023z00a410024630z47009480064910f4a00a4b20i4c0064e1034f0064g30y"],"Triniel":[13,13,640017,"00311010010200605001063120700a0a00a0b00c0c3110f0090h20n0i0090j00c0k10t0m10r0n0090o0060p20g0r0060u0060w00c0z00a1000c1100214001160021920k1a0021b0091c1031d0021e0011g00a1h20m1i0061j00c1k0091l10f1q00a1s0061w00c1z00223002240062500c260012720e280092900a2a0022b0092c0062d10w2e00a2f0092i2042k00a2m00a2o4132q0012s0012u20p2x00c2y0012z10h300023100c32006330013400c352083600a3700938002390063d0063g0093k0023m0013r1053s00c3t0093u0023v20o3w0013y00a3z0064010b4100c420064320i460064800a4b0064c0094d0014g0094i0024l0024n20d4o0024p00c4q10v4s10u4t0094u00c4v20l4x00c50312510095200155001563115700a5a0025b00a5c312"]},"Ranger":{"Nezekan":[11,11,310033,"00300010010200204114050020621508116090060a3070f0060h2170i0090j00a0l0090m00a0n0020p0090u1180v00a0w00c0y0060z2191000c1221a1300c1411b1a00c1d0021f00a1h0011j00a1o0091p0011q21c1r00c1s0091t0011u0021v11d1w0091x0061y0022320i2600a2840j2a0012d21e2i0062j0022k00c2l11b2m0062n00a2o00c2p0092q21f2r00a2s00c2x0012z00a3100133006360093c11d3d0093e21g3g0093h21h3i0023k0093l0013m1143r00c3t0063u0013v00c3x0013y00c3z21i410024630747002481164a21j4b0064c1184e0064f00a4g300"],"Zikel":[11,11,320033,"0030q0100602009030020421e0500a0611k070010821j0900a0a30s0f0010h11l0j00c0m0090p0060u21f0v00c0w00a0y0010z0091021911002120091310u14001190061b0091c0021d11m1f0061h0061j0021o00a1p00c1q21h1s0061u0091v11n1w00c1x0011y21c240012700a2840x290012c00a2i21a2j00a2k0092l10u2m00c2o0022q2152r0092s0012x0062z002310023311l340063500c370023c00a3d11n3e00c3f0063g21g3h00c3i00a3k0013l0093m21i3r0023u0093x0093z11m4100a4630s47001482174900a4a11k4b0014c20i4d0064e00c4f0024g30q"],"Vaizel":[11,11,330033,"0030y0100202118040020521e0600107116080020900c0a30z0f0060h0010i0060j0090l00a0n00a0p0090u00a0v2190w00c0y2150z006100091100c1221a130011411d1a0021d0061f11m1i0021o0011p0091q00a1r10u1s00c1t0011u0021v00a1w2171x00c1y0062321i26009284102a00c2d21f2i0022j0092k21j2l0012m0062n00a2o0092p11l2q0012r00c2s00a2y0063111k33002360063c11n3d00a3e21c3f0023g00c3h0093i21h3k0093l21g3m0013r00c3t0013v0013x00c3y0023z00a410024630z47009480064911b4a00a4b20i4c0064e1144f0064g30y"],"Triniel":[13,13,340017,"00311010010200605001063120700a0a00a0b00c0c3110f0090h21h0i0090j00c0k11l0m11k0n0090o0060p21c0r0060u0060w00c0z00a1000c1100214001160021921e1a0021b0091c1141d0021e0011g00a1h21g1i0061j00c1k0091l11b1q00a1s0061w00c1z00223002240062500c260012721a280092900a2a0022b0092c0062d11n2e00a2f0092i2152k00a2m00a2o4132q0012s0012u21j2x00c2y0012z11d300023100c32006330013400c352173600a3700938002390063d0063g0093k0023m0013r1163s00c3t0093u0023v21i3w0013y00a3z006401184100c420064320i460064800a4b0064c0094d0014g0094i0024l0024n2194o0024p00c4q11m4s10u4t0094u00c4v21f4x00c50312510095200155001563115700a5a0025b00a5c312"]},"Assassin":{"Nezekan":[11,11,410033,"0030001001020020411o050020621p0811q090060a3070f0060h21r0i0090j00a0l0090m00a0n0020p0090u11s0v00a0w00c0y0060z21t1000c1221u1300c1411v1a00c1d0021f00a1h0011j00a1o0091p0011q21w1r00c1s0091t0011u0021v11x1w0091x0061y0022320i2600a2840j2a0012d21y2i0062j0022k00c2l11v2m0062n00a2o00c2p0092q21z2r00a2s00c2x0012z00a3100133006360093c11x3d0093e2203g0093h2213i0023k0093l0013m11o3r00c3t0063u0013v00c3x0013y00c3z2224100246307470024811q4a2234b0064c11s4e0064f00a4g300"],"Zikel":[11,11,420033,"0030q0100602009030020421y0500a0612407001082230900a0a30s0f0010h1250j00c0m0090p0060u21z0v00c0w00a0y0010z0091021t11002120091310u14001190061b0091c0021d1261f0061h0061j0021o00a1p00c1q2211s0061u0091v1271w00c1x0011y21w240012700a2840x290012c00a2i21u2j00a2k0092l10u2m00c2o0022q21p2r0092s0012x0062z0023100233125340063500c370023c00a3d1273e00c3f0063g2203h00c3i00a3k0013l0093m2223r0023u0093x0093z1264100a4630s470014821r4900a4a1244b0014c20i4d0064e00c4f0024g30q"],"Vaizel":[11,11,430033,"0030y010020211s040020521y060010711q080020900c0a30z0f0060h0010i0060j0090l00a0n00a0p0090u00a0v21t0w00c0y21p0z006100091100c1221u130011411x1a0021d0061f1261i0021o0011p0091q00a1r10u1s00c1t0011u0021v00a1w21r1x00c1y0062322226009284102a00c2d21z2i0022j0092k2232l0012m0062n00a2o0092p1252q0012r00c2s00a2y0063112433002360063c1273d00a3e21w3f0023g00c3h0093i2213k0093l2203m0013r00c3t0013v0013x00c3y0023z00a410024630z47009480064911v4a00a4b20i4c0064e11o4f0064g30y"],"Triniel":[13,13,440017,"00311010010200605001063120700a0a00a0b00c0c3110f0090h2210i0090j00c0k1250m1240n0090o0060p21w0r0060u0060w00c0z00a1000c1100214001160021921y1a0021b0091c11o1d0021e0011g00a1h2201i0061j00c1k0091l11v1q00a1s0061w00c1z00223002240062500c260012721u280092900a2a0022b0092c0062d1272e00a2f0092i21p2k00a2m00a2o4132q0012s0012u2232x00c2y0012z11x300023100c32006330013400c3521r3600a3700938002390063d0063g0093k0023m0013r11q3s00c3t0093u0023v2223w0013y00a3z0064011s4100c420064320i460064800a4b0064c0094d0014g0094i0024l0024n21t4o0024p00c4q1264s10u4t0094u00c4v21z4x00c50312510095200155001563115700a5a0025b00a5c312"]},"Templar":{"Nezekan":[11,11,210033,"0030001001020020412805002062290812a090060a3070f0060h22b0i0090j00a0l0090m00a0n0020p0090u12c0v00a0w00c0y0060z22d1000c1222e1300c1412f1a00c1d0021f00a1h0011j00a1o0091p0011q22g1r00c1s0091t0011u0021v12h1w0091x0061y0022320i2600a2840j2a0012d22i2i0062j0022k00c2l12f2m0062n00a2o00c2p0092q22j2r00a2s00c2x0012z00a3100133006360093c12h3d0093e22k3g0093h22l3i0023k0093l0013m1283r00c3t0063u0013v00c3x0013y00c3z22m4100246307470024812a4a22n4b0064c12c4e0064f00a4g300"],"Zikel":[11,11,220033,"0030q0100602009030020422i0500a06124070010822n0900a0a30s0f0010h12o0j00c0m0090p0060u22j0v00c0w00a0y0010z0091022d11002120091312p14001190061b0091c0021d12q1f0061h0061j0021o00a1p00c1q22l1s0061u0091v12r1w00c1x0011y22g240012700a2840x290012c00a2i22e2j00a2k0092l12p2m00c2o0022q2292r0092s0012x0062z002310023312o340063500c370023c00a3d12r3e00c3f0063g22k3h00c3i00a3k0013l0093m22m3r0023u0093x0093z12q4100a4630s470014822b4900a4a1244b0014c20i4d0064e00c4f0024g30q"],"Vaizel":[11,11,230033,"0030y010020212c040020522i060010712a080020900c0a30z0f0060h0010i0060j0090l00a0n00a0p0090u00a0v22d0w00c0y2290z006100091100c1222e130011412h1a0021d0061f12q1i0021o0011p0091q00a1r12p1s00c1t0011u0021v00a1w22b1x00c1y0062322m26009284102a00c2d22j2i0022j0092k22n2l0012m0062n00a2o0092p12o2q0012r00c2s00a2y0063112433002360063c12r3d00a3e22g3f0023g00c3h0093i22l3k0093l22k3m0013r00c3t0013v0013x00c3y0023z00a410024630z47009480064912f4a00a4b20i4c0064e1284f0064g30y"],"Triniel":[13,13,240017,"00311010010200605001063120700a0a00a0b00c0c3110f0090h22l0i0090j00c0k12o0m1240n0090o0060p22g0r0060u0060w00c0z00a1000c1100214001160021922i1a0021b0091c1281d0021e0011g00a1h22k1i0061j00c1k0091l12f1q00a1s0061w00c1z00223002240062500c260012722e280092900a2a0022b0092c0062d12r2e00a2f0092i2292k00a2m00a2o4132q0012s0012u22n2x00c2y0012z12h300023100c32006330013400c3522b3600a3700938002390063d0063g0093k0023m0013r12a3s00c3t0093u0023v22m3w0013y00a3z0064012c4100c420064320i460064800a4b0064c0094d0014g0094i0024l0024n22d4o0024p00c4q12q4s12p4t0094u00c4v22j4x00c50312510095200155001563115700a5a0025b00a5c312"]},"Gladiator":{"Nezekan":[11,11,110033,"0030001001020020412s050020622t0812u090060a3070f0060h22v0i0090j00a0l0090m00a0n0020p0090u12w0v00a0w00c0y0060z22x1000c1222y1300c1412z1a00c1d0021f00a1h0011j00a1o0091p0011q2301r00c1s0091t0011u0021v1311w0091x0061y0022320i2600a2840j2a0012d2322i0062j0022k00c2l12z2m0062n00a2o00c2p0092q2332r00a2s00c2x0012z00a3100133006360093c1313d0093e2343g0093h2353i0023k0093l0013m12s3r00c3t0063u0013v00c3x0013y00c3z2364100246307470024812u4a2374b0064c12w4e0064f00a4g300"],"Zikel":[11,11,120033,"0030q010060200903002042320500a0612407001082370900a0a30s0f0010h1380j00c0m0090p0060u2330v00c0w00a0y0010z0091022x11002120091312p14001190061b0091c0021d1391f0061h0061j0021o00a1p00c1q2351s0061u0091v13a1w00c1x0011y230240012700a2840x290012c00a2i22y2j00a2k0092l12p2m00c2o0022q22t2r0092s0012x0062z0023100233138340063500c370023c00a3d13a3e00c3f0063g2343h00c3i00a3k0013l0093m2363r0023u0093x0093z1394100a4630s470014822v4900a4a1244b0014c20i4d0064e00c4f0024g30q"],"Vaizel":[11,11,130033,"0030y010020212w0400205232060010712u080020900c0a30z0f0060h0010i0060j0090l00a0n00a0p0090u00a0v22x0w00c0y22t0z006100091100c1222y13001141311a0021d0061f1391i0021o0011p0091q00a1r12p1s00c1t0011u0021v00a1w22v1x00c1y0062323626009284102a00c2d2332i0022j0092k2372l0012m0062n00a2o0092p1382q0012r00c2s00a2y0063112433002360063c13a3d00a3e2303f0023g00c3h0093i2353k0093l2343m0013r00c3t0013v0013x00c3y0023z00a410024630z47009480064912z4a00a4b20i4c0064e12s4f0064g30y"],"Triniel":[13,13,140017,"00311010010200605001063120700a0a00a0b00c0c3110f0090h2350i0090j00c0k1380m1240n0090o0060p2300r0060u0060w00c0z00a1000c110021400116002192321a0021b0091c12s1d0021e0011g00a1h2341i0061j00c1k0091l12z1q00a1s0061w00c1z00223002240062500c260012722y280092900a2a0022b0092c0062d13a2e00a2f0092i22t2k00a2m00a2o4132q0012s0012u2372x00c2y0012z131300023100c32006330013400c3522v3600a3700938002390063d0063g0093k0023m0013r12u3s00c3t0093u0023v2363w0013y00a3z0064012w4100c420064320i460064800a4b0064c0094d0014g0094i0024l0024n22x4o0024p00c4q1394s12p4t0094u00c4v2334x00c50312510095200155001563115700a5a0025b00a5c312"]},"Chanter":{"Nezekan":[11,11,810033,"0030001001020020413b050020623c0813d090060a3070f0060h23e0i0090j00a0l0090m00a0n0020p0090u13f0v00a0w00c0y0060z23g1000c1223h1300c1413i1a00c1d0021f00a1h0011j00a1o0091p0011q23j1r00c1s0091t0011u0021v1311w0091x0061y0022320i2600a2840j2a0012d23k2i0062j0022k00c2l13i2m0062n00a2o00c2p0092q23l2r00a2s00c2x0012z00a3100133006360093c1313d0093e23m3g0093h23n3i0023k0093l0013m13b3r00c3t0063u0013v00c3x0013y00c3z23o4100246307470024813d4a23p4b0064c13f4e0064f00a4g300"],"Zikel":[11,11,820033,"0030q0100602009030020423k0500a06124070010823p0900a0a30s0f0010h13q0j00c0m0090p0060u23l0v00c0w00a0y0010z0091023g11002120091312p14001190061b0091c0021d13r1f0061h0061j0021o00a1p00c1q23n1s0061u0091v13s1w00c1x0011y23j240012700a2840x290012c00a2i23h2j00a2k0092l12p2m00c2o0022q23c2r0092s0012x0062z002310023313q340063500c370023c00a3d13s3e00c3f0063g23m3h00c3i00a3k0013l0093m23o3r0023u0093x0093z13r4100a4630s470014823e4900a4a1244b0014c20i4d0064e00c4f0024g30q"],"Vaizel":[11,11,830033,"0030y010020213f040020523k060010713d080020900c0a30z0f0060h0010i0060j0090l00a0n00a0p0090u00a0v23g0w00c0y23c0z006100091100c1223h13001141311a0021d0061f13r1i0021o0011p0091q00a1r12p1s00c1t0011u0021v00a1w23e1x00c1y0062323o26009284102a00c2d23l2i0022j0092k23p2l0012m0062n00a2o0092p13q2q0012r00c2s00a2y0063112433002360063c13s3d00a3e23j3f0023g00c3h0093i23n3k0093l23m3m0013r00c3t0013v0013x00c3y0023z00a410024630z47009480064913i4a00a4b20i4c0064e13b4f0064g30y"],"Triniel":[13,13,840017,"00311010010200605001063120700a0a00a0b00c0c3110f0090h23n0i0090j00c0k13q0m1240n0090o0060p23j0r0060u0060w00c0z00a1000c1100214001160021923k1a0021b0091c13b1d0021e0011g00a1h23m1i0061j00c1k0091l13i1q00a1s0061w00c1z00223002240062500c260012723h280092900a2a0022b0092c0062d13s2e00a2f0092i23c2k00a2m00a2o4132q0012s0012u23p2x00c2y0012z131300023100c32006330013400c3523e3600a3700938002390063d0063g0093k0023m0013r13d3s00c3t0093u0023v23o3w0013y00a3z0064013f4100c420064320i460064800a4b0064c0094d0014g0094i0024l0024n23g4o0024p00c4q13r4s12p4t0094u00c4v23l4x00c50312510095200155001563115700a5a0025b00a5c312"]},"Cleric":{"Nezekan":[11,11,710033,"0030001001020020413t050020623u0813v090060a3070f0060h23w0i0090j00a0l0090m00a0n0020p0090u13x0v00a0w00c0y0060z23y1000c1223z1300c141401a00c1d0021f00a1h0011j00a1o0091p0011q2411r00c1s0091t0011u0021v1421w0091x0061y0022320i2600a2840j2a0012d2432i0062j0022k00c2l1402m0062n00a2o00c2p0092q2442r00a2s00c2x0012z00a3100133006360093c1423d0093e2453g0093h2463i0023k0093l0013m13t3r00c3t0063u0013v00c3x0013y00c3z2474100246307470024813v4a2484b0064c13x4e0064f00a4g300"],"Zikel":[11,11,720033,"0030q010060200903002042430500a0614907001082480900a0a30s0f0010h14a0j00c0m0090p0060u2440v00c0w00a0y0010z0091023y11002120091312p14001190061b0091c0021d14b1f0061h0061j0021o00a1p00c1q2461s0061u0091v14c1w00c1x0011y241240012700a2840x290012c00a2i23z2j00a2k0092l12p2m00c2o0022q23u2r0092s0012x0062z002310023314a340063500c370023c00a3d14c3e00c3f0063g2453h00c3i00a3k0013l0093m2473r0023u0093x0093z14b4100a4630s470014823w4900a4a1494b0014c20i4d0064e00c4f0024g30q"],"Vaizel":[11,11,730033,"0030y010020213x0400205243060010713v080020900c0a30z0f0060h0010i0060j0090l00a0n00a0p0090u00a0v23y0w00c0y23u0z006100091100c1223z13001141421a0021d0061f14b1i0021o0011p0091q00a1r12p1s00c1t0011u0021v00a1w23w1x00c1y0062324726009284102a00c2d2442i0022j0092k2482l0012m0062n00a2o0092p14a2q0012r00c2s00a2y0063114933002360063c14c3d00a3e2413f0023g00c3h0093i2463k0093l2453m0013r00c3t0013v0013x00c3y0023z00a410024630z4700948006491404a00a4b20i4c0064e13t4f0064g30y"],"Triniel":[13,13,740017,"00311010010200605001063120700a0a00a0b00c0c3110f0090h2460i0090j00c0k14a0m1490n0090o0060p2410r0060u0060w00c0z00a1000c110021400116002192431a0021b0091c13t1d0021e0011g00a1h2451i0061j00c1k0091l1401q00a1s0061w00c1z00223002240062500c260012723z280092900a2a0022b0092c0062d14c2e00a2f0092i23u2k00a2m00a2o4132q0012s0012u2482x00c2y0012z142300023100c32006330013400c3523w3600a3700938002390063d0063g0093k0023m0013r13v3s00c3t0093u0023v2473w0013y00a3z0064013x4100c420064320i460064800a4b0064c0094d0014g0094i0024l0024n23y4o0024p00c4q14b4s12p4t0094u00c4v2444x00c50312510095200155001563115700a5a0025b00a5c312"]},"Spiritmaster":{"Nezekan":[11,11,510033,"0030001001020020414d050020624e0814f090060a3070f0060h24g0i0090j00a0l0090m00a0n0020p0090u14h0v00a0w00c0y0060z24i1000c1224j1300c1414k1a00c1d0021f00a1h0011j00a1o0091p0011q24l1r00c1s0091t0011u0021v14m1w0091x0061y0022320i2600a2840j2a0012d24n2i0062j0022k00c2l14k2m0062n00a2o00c2p0092q24o2r00a2s00c2x0012z00a3100133006360093c14m3d0093e24p3g0093h24q3i0023k0093l0013m14d3r00c3t0063u0013v00c3x0013y00c3z24r4100246307470024814f4a24s4b0064c14h4e0064f00a4g300"],"Zikel":[11,11,520033,"0030q0100602009030020424n0500a0614t070010824s0900a0a30s0f0010h14u0j00c0m0090p0060u24o0v00c0w00a0y0010z0091024i11002120091310u14001190061b0091c0021d14v1f0061h0061j0021o00a1p00c1q24q1s0061u0091v14w1w00c1x0011y24l240012700a2840x290012c00a2i24j2j00a2k0092l10u2m00c2o0022q24e2r0092s0012x0062z002310023314u340063500c370023c00a3d14w3e00c3f0063g24p3h00c3i00a3k0013l0093m24r3r0023u0093x0093z14v4100a4630s470014824g4900a4a14t4b0014c20i4d0064e00c4f0024g30q"],"Vaizel":[11,11,530033,"0030y010020214h040020524n060010714f080020900c0a30z0f0060h0010i0060j0090l00a0n00a0p0090u00a0v24i0w00c0y24e0z006100091100c1224j130011414m1a0021d0061f14v1i0021o0011p0091q00a1r10u1s00c1t0011u0021v00a1w24g1x00c1y0062324r26009284102a00c2d24o2i0022j0092k24s2l0012m0062n00a2o0092p14u2q0012r00c2s00a2y0063114t33002360063c14w3d00a3e24l3f0023g00c3h0093i24q3k0093l24p3m0013r00c3t0013v0013x00c3y0023z00a410024630z47009480064914k4a00a4b20i4c0064e14d4f0064g30y"],"Triniel":[13,13,540017,"00311010010200605001063120700a0a00a0b00c0c3110f0090h24q0i0090j00c0k14u0m14t0n0090o0060p24l0r0060u0060w00c0z00a1000c1100214001160021924n1a0021b0091c14d1d0021e0011g00a1h24p1i0061j00c1k0091l14k1q00a1s0061w00c1z00223002240062500c260012724j280092900a2a0022b0092c0062d14w2e00a2f0092i24e2k00a2m00a2o4132q0012s0012u24s2x00c2y0012z14m300023100c32006330013400c3524g3600a3700938002390063d0063g0093k0023m0013r14f3s00c3t0093u0023v24r3w0013y00a3z0064014h4100c420064320i460064800a4b0064c0094d0014g0094i0024l0024n24i4o0024p00c4q14v4s10u4t0094u00c4v24o4x00c50312510095200155001563115700a5a0025b00a5c312"]}}};
+// ===================== DATA =====================
+const GRADES=["common","rare","legend","unique","none"];
+function decodeBoard(b,name){
+ return{name,rows:b.rows,cols:b.cols,nodes:b.n.map(([id,row,col,g,ni,ei])=>({id,name:RAW.s[ni],effect:RAW.s[ei],grade:GRADES[g],row,col}))};
+}
+const DATA={Azphel:decodeBoard(RAW.A,"Azphel"),Ariel:decodeBoard(RAW.R,undefined)};
+// Class boards: each node packed as 5 base-36 chars: position (2), grade (1), name/effect pair (2).
+function decodeClassBoard([rows,cols,base,str],name){
+ const nodes=[];
+ for(let i=0;i<str.length;i+=5){
+  const pos=parseInt(str.slice(i,i+2),36),[ni,ei]=KLS.P[parseInt(str.slice(i+3,i+5),36)];
+  nodes.push({id:base+pos,name:KLS.S[ni],effect:KLS.S[ei],grade:GRADES[+str[i+2]],row:Math.floor(pos/15)+1,col:pos%15+1});
+ }
+ return{name,rows,cols,nodes};
+}
+const ORDER=["Nezekan","Zikel","Vaizel","Triniel"];
+const CLASSES=["Sorcerer","Ranger","Assassin","Templar","Gladiator","Chanter","Cleric","Spiritmaster"];
+for(const c of CLASSES){DATA[c]={};for(const b of ORDER)DATA[c][b]=decodeClassBoard(KLS.C[c][b],b)}
+const COST={common:1,rare:2,legend:3,unique:4,none:0};
+
+let cls="Chanter",activeBoard="Nezekan";
+const states={},routes={},azStates={},arStates={};
+const dirty={};const azDirty={};const arDirty={};const lastClassResult={};const lastAzResult={};const lastArResult={};
+
+function sig(n){return `${n.name}|${n.effect}`}
+function posKey(n){return `${n.row},${n.col}`}
+function nodeCost(n){return COST[n.grade]||0}
+function displayName(n){return n.name.replace(/^Skill Level Up -\s*/,"").replace("Critical Hit Resist","Crit Resist")}
+function displayGroupName(g){return g.name.replace(/^Skill Level Up -\s*/,"")}
+function rankOf(arr,s){const i=arr.indexOf(s);return i<0?999:i}
+function effectValue(effect){const m=(effect||"").match(/\+([\d.]+)/);return m?+m[1]:1}
+function lexCmpVec(a,b){
+ const L=Math.max(a.length,b.length);
+ for(let i=0;i<L;i++){const av=a[i]||0,bv=b[i]||0;if(av!==bv)return av>bv?1:-1}
+ return 0;
+}
+function startNode(B){return B.nodes.find(n=>n.grade==="none"||n.name.includes("Start"))}
+
+// Per-board precomputation (index maps, adjacency in the same order as the original graph()).
+function prep(B){
+ if(B._p)return B._p;
+ const N=B.nodes.length,idx=new Map(B.nodes.map((n,i)=>[n.id,i])),by=new Map(B.nodes.map((n,i)=>[posKey(n),i]));
+ const adj=B.nodes.map(n=>{const a=[];for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){const v=by.get(`${n.row+dr},${n.col+dc}`);if(v!==undefined)a.push(v)}return a});
+ const cost=Float64Array.from(B.nodes,nodeCost);
+ B._p={N,idx,adj,cost};
+ return B._p;
+}
+function graph(B){
+ const p=prep(B),m=new Map();
+ B.nodes.forEach((n,i)=>m.set(n.id,p.adj[i].map(j=>B.nodes[j].id)));
+ return m;
+}
+// Same algorithm and tie-breaking as the original Dijkstra, with typed arrays.
+function dijkstraFast(B,sources,pen,travel){
+ const {N,idx,adj}=prep(B),cost=travel||prep(B).cost;
+ const d0=new Float64Array(N).fill(Infinity),d1=new Float64Array(N).fill(Infinity),prev=new Int32Array(N).fill(-1),done=new Uint8Array(N);
+ for(const s of sources){const i=idx.get(s);if(i!==undefined){d0[i]=0;d1[i]=0}}
+ for(let k=0;k<N;k++){
+  let u=-1,b0=Infinity,b1=Infinity;
+  for(let i=0;i<N;i++)if(!done[i]&&(d0[i]<b0||(d0[i]===b0&&d1[i]<b1))){u=i;b0=d0[i];b1=d1[i]}
+  if(u<0)break;done[u]=1;
+  for(const v of adj[u]){
+   if(done[v])continue;
+   const a0=b0+cost[v],a1=b1+pen[v];
+   if(a0<d0[v]||(a0===d0[v]&&a1<d1[v])){d0[v]=a0;d1[v]=a1;prev[v]=u}
+  }
+ }
+ return{d1,prev};
+}
+function recoverFast(B,prev,sources,dstIdx){
+ const nodes=B.nodes,p=[nodes[dstIdx].id];let cur=dstIdx,g=0;
+ while(!sources.has(nodes[cur].id)&&g++<1000){cur=prev[cur];if(cur<0)return[];p.push(nodes[cur].id)}
+ return p.reverse();
+}
+function setKey(s){return [...s].sort((a,b)=>a-b).join(",")}
+// Memoised Dijkstra: penalties are fixed during one solve, so the result depends only on the tree.
+function makeDjCache(){
+ const m=new Map();
+ return(B,tree,pen,tag,travel)=>{const k=tag+"#"+setKey(tree);let r=m.get(k);if(!r){r=dijkstraFast(B,tree,pen,travel);if(m.size>20000)m.clear();m.set(k,r)}return r};
+}
+// The original capped each phase at 30-70 rounds, so with big budgets it stopped collecting wanted skills
+// early and spent the rest on stats. Phases now run until nothing affordable is left.
+const MAX_ROUNDS=1000;
+const tick=()=>new Promise(r=>setTimeout(r,0));
+function makeYielder(onProgress){
+ let last=Date.now();
+ return async(msg)=>{if(Date.now()-last>40){if(onProgress)onProgress(msg);await tick();last=Date.now()}};
+}
+
+// ===================== CLASS STATE =====================
+function classGroups(c){
+ const m={common:new Map(),legend:new Map(),rare:new Map(),unique:new Map()};
+ for(const b of ORDER)for(const n of DATA[c][b].nodes){
+  if(n.grade==="none")continue;
+  const s=sig(n);
+  if(!m[n.grade].has(s))m[n.grade].set(s,{sig:s,name:n.name,effect:n.effect,count:0});
+  m[n.grade].get(s).count++;
+ }
+ return m;
+}
+function enabledGroupCount(c,grade,s){
+ let count=0;
+ for(const b of ORDER)if(states[c].enabledBoards.has(b))
+  for(const n of DATA[c][b].nodes)if(n.grade===grade&&sig(n)===s)count++;
+ return count;
+}
+function statDefaultRank(name){
+ const x=name.toLowerCase();
+ if(x==="attack")return 0;
+ if(x==="critical hit")return 1;
+ if(x==="critical hit resist")return 2;
+ if(x==="defense")return 3;
+ if(x==="max hp")return 4;
+ if(x==="max mp")return 5;
+ return 99;
+}
+function makeState(c){
+ const g=classGroups(c);
+ return{
+  budget:0,
+  enabledBoards:new Set(ORDER),
+  stats:[...g.common.values()].sort((a,b)=>statDefaultRank(a.name)-statDefaultRank(b.name)||a.name.localeCompare(b.name)).map(x=>x.sig),
+  statsEnabled:new Set([...g.common.values()].filter(x=>["attack","critical hit"].includes(x.name.toLowerCase())).map(x=>x.sig)),
+  skillMode:"basic",passiveMode:"basic",uniqueMode:"basic",
+  skillsChecked:new Set([...g.legend.values()].map(x=>x.sig)),
+  passivesChecked:new Set([...g.rare.values()].map(x=>x.sig)),
+  uniquesChecked:new Set(),
+  skillCounts:Object.fromEntries([...g.legend.keys()].map(s=>[s,g.legend.get(s).count])),
+  passiveCounts:Object.fromEntries([...g.rare.keys()].map(s=>[s,g.rare.get(s).count])),
+  uniqueCounts:Object.fromEntries([...g.unique.keys()].map(s=>[s,0])),
+  // node ids of unchecked/extra skill, passive or orange nodes the user approved crossing to reach a checked stat
+  crossAllowed:new Set(),
+  // crossing offers the user said no to (keyed by crossingKey)
+  crossDeclined:new Set()
+ };
+}
+function azGroups(){
+ const m={common:new Map(),rare:new Map(),legend:new Map(),unique:new Map()};
+ for(const n of DATA.Azphel.nodes){
+  if(n.grade==="none")continue;const s=`${n.grade}|${sig(n)}`;
+  if(!m[n.grade].has(s))m[n.grade].set(s,{sig:s,name:n.name,effect:n.effect,count:0});
+  m[n.grade].get(s).count++;
+ }
+ return m;
+}
+function azDefaultRank(name){
+ const x=name.toLowerCase();
+ if(x.includes("pvp attack"))return 0;
+ if(x.includes("pvp critical hit")&&!x.includes("resist"))return 1;
+ if(x.includes("pvp accuracy"))return 2;
+ if(x.includes("pvp evasion"))return 3;
+ if(x.includes("critical hit resist"))return 4;
+ if(x.includes("pvp defense"))return 5;
+ if(x==="max hp")return 6;
+ if(x==="max mp")return 7;
+ return 50;
+}
+function makeAzState(){
+ const g=azGroups();
+ return{
+  budget:0,
+  common:[...g.common.values()].sort((a,b)=>azDefaultRank(a.name)-azDefaultRank(b.name)||a.name.localeCompare(b.name)).map(x=>x.sig),
+  commonEnabled:new Set([...g.common.keys()]),
+  rare:[...g.rare.values()].sort((a,b)=>azDefaultRank(a.name)-azDefaultRank(b.name)||a.name.localeCompare(b.name)).map(x=>x.sig),
+  rareEnabled:new Set([...g.rare.keys()]),
+  rareMode:"basic",
+  rareCounts:Object.fromEntries([...g.rare.keys()].map(s=>[s,g.rare.get(s).count])),
+  legend:new Set(),unique:new Set(),route:new Set()
+ };
+}
+function arGroups(){
+ const m={common:new Map(),rare:new Map(),legend:new Map(),unique:new Map()};
+ for(const n of DATA.Ariel.nodes){
+  if(n.grade==="none")continue;
+  const s=`${n.grade}|${sig(n)}`;
+  if(!m[n.grade].has(s))m[n.grade].set(s,{sig:s,name:n.name,effect:n.effect,count:0});
+  m[n.grade].get(s).count++;
+ }
+ return m;
+}
+function arRank(name){
+ const x=name.toLowerCase();
+ if(x.includes("boss attack"))return 0;
+ if(x.includes("pve attack"))return 1;
+ if(x.includes("boss defense"))return 2;
+ if(x.includes("pve defense"))return 3;
+ if(x.includes("pve accuracy"))return 4;
+ if(x.includes("pve evasion"))return 5;
+ if(x.includes("critical hit")&&!x.includes("resist"))return 6;
+ if(x.includes("critical hit resist"))return 7;
+ if(x==="max hp")return 8;
+ if(x==="max mp")return 9;
+ return 50;
+}
+function makeArState(){
+ const g=arGroups();
+ const common=[...g.common.values()].sort((a,b)=>arRank(a.name)-arRank(b.name)||a.name.localeCompare(b.name)).map(x=>x.sig);
+ const rare=[...g.rare.values()].sort((a,b)=>arRank(a.name)-arRank(b.name)||a.name.localeCompare(b.name)).map(x=>x.sig);
+ const commonEnabled=new Set();
+ for(const x of g.common.values()){const n=x.name.toLowerCase();if(n==="boss attack"||n==="pve attack")commonEnabled.add(x.sig)}
+ const rareEnabled=new Set();
+ for(const x of g.rare.values()){const n=x.name.toLowerCase();if(n.includes("pve attack, pve defense")||n.includes("boss attack, boss defense"))rareEnabled.add(x.sig)}
+ return{
+  budget:0,enabled:true,common,commonEnabled,rare,rareEnabled,
+  legend:new Set([...g.legend.values()].filter(x=>{const n=x.name.toLowerCase();return n==="boss damage boost"||n==="critical hit"}).map(x=>x.sig)),
+  unique:new Set([...g.unique.values()].filter(x=>x.name.toLowerCase()==="pve damage boost").map(x=>x.sig)),
+  legendMode:"basic",uniqueMode:"basic",legendCounts:{},uniqueCounts:{},
+  route:new Set()
+ };
+}
+function emptyRoutes(c){
+ const out={};
+ for(const b of ORDER){
+  const s=startNode(DATA[c][b]);
+  out[b]=states[c].enabledBoards.has(b)?new Set(s?[s.id]:[]):new Set();
+ }
+ return out;
+}
+function resetClass(c){
+ states[c]=makeState(c);routes[c]=emptyRoutes(c);azStates[c]=makeAzState();arStates[c]=makeArState();
+ dirty[c]=true;azDirty[c]=true;arDirty[c]=true;
+ lastClassResult[c]={routes:routes[c],remaining:states[c].budget};
+ const azStart=startNode(DATA.Azphel);
+ lastAzResult[c]={route:new Set(azStart?[azStart.id]:[]),remaining:0};
+ const arStart=startNode(DATA.Ariel);
+ lastArResult[c]={route:new Set(arStart?[arStart.id]:[]),remaining:0};
+}
+CLASSES.forEach(resetClass);
+
+function desiredCount(c,n){
+ const st=states[c],s=sig(n),max=enabledGroupCount(c,n.grade,s);
+ if(n.grade==="legend")return st.skillMode==="basic"?(st.skillsChecked.has(s)?max:0):Math.min(max,Math.max(0,st.skillCounts[s]||0));
+ if(n.grade==="rare")return st.passiveMode==="basic"?(st.passivesChecked.has(s)?max:0):Math.min(max,Math.max(0,st.passiveCounts[s]||0));
+ if(n.grade==="unique")return st.uniqueMode==="basic"?(st.uniquesChecked.has(s)?max:0):Math.min(max,Math.max(0,st.uniqueCounts[s]||0));
+ return 0;
+}
+function desiredCountBySig(c,grade,s){
+ const sample=ORDER.flatMap(b=>DATA[c][b].nodes).find(n=>n.grade===grade&&sig(n)===s);
+ return sample?desiredCount(c,sample):0;
+}
+function currentCount(c,rt,grade,s){
+ let x=0;
+ for(const b of ORDER)if(states[c].enabledBoards.has(b)){
+  const r=rt[b]||new Set();
+  for(const n of DATA[c][b].nodes)if(r.has(n.id)&&n.grade===grade&&sig(n)===s)x++;
+ }
+ return x;
+}
+function desiredTotals(c){
+ let total=0;
+ for(const grade of ["legend","rare","unique"]){const g=classGroups(c)[grade];for(const s of g.keys())total+=desiredCountBySig(c,grade,s)}
+ return total;
+}
+function reachedTotals(c,rt){
+ let reached=0;
+ for(const grade of ["legend","rare","unique"]){const g=classGroups(c)[grade];for(const s of g.keys())reached+=Math.min(desiredCountBySig(c,grade,s),currentCount(c,rt,grade,s))}
+ return reached;
+}
+
+// ===================== CLASS SOLVER =====================
+// Agreed priority, each step only matters when everything above it is equal:
+//  1. checked orange uniques (must reach)   2. checked skills   3. checked passives  (exact counts in Advanced)
+//  4. most CHECKED-stat nodes in total        5. at equal total, more of the higher-ranked checked stat
+// Unchecked oranges/skills/passives and extra copies (beyond the wanted number) are "skipped": never used to
+// build the route. Leftover crystals, only once nothing checked can be reached any more: unchecked stats in
+// list order, then skipped nodes as a last resort.
+const SPECIAL=["legend","rare","unique"];
+const SKIP_COST=1000; // extra travel cost on skipped nodes: paths only cross them if there is no other way
+function classCtx(c,variant=0,oldStyle=false){
+ const st=states[c],enabled=ORDER.filter(b=>st.enabledBoards.has(b));
+ const desired=new Map(),g=classGroups(c);
+ for(const grade of SPECIAL)for(const s of g[grade].keys())desired.set(grade+"|"+s,desiredCountBySig(c,grade,s));
+ const want=n=>desired.get(n.grade+"|"+sig(n))||0;
+ const checked=st.stats.filter(s=>st.statsEnabled.has(s)),unchecked=st.stats.filter(s=>!st.statsEnabled.has(s));
+ const cslot=new Map(checked.map((s,i)=>[s,i])),uslot=new Map(unchecked.map((s,i)=>[s,i]));
+ const pen={},tc={},penS={},tcS={},allow=st.crossAllowed||new Set();
+ for(const b of ORDER){
+  const B=DATA[c][b];prep(B);
+  // tie-break between equally cheap paths: prefer checked stats (higher rank first), then anything else
+  pen[b]=Float64Array.from(B.nodes,n=>{if(n.grade!=="common")return 0;const s=sig(n);return cslot.has(s)?(variant===1?0:cslot.get(s)):50});
+  tc[b]=Float64Array.from(B.nodes,n=>nodeCost(n)+(SPECIAL.includes(n.grade)&&want(n)<=0&&!allow.has(n.id)?SKIP_COST:0));
+  // paths to WANTED skills/passives/oranges: plain crystal cost, unchecked nodes only as a tie-break penalty
+  // (as in the original), because a wanted skill level outranks everything below it
+  penS[b]=Float64Array.from(B.nodes,(n,i)=>{
+   if(SPECIAL.includes(n.grade))return want(n)<=0&&!allow.has(n.id)?2500:0;
+   if(n.grade!=="common")return 0;
+   const s=sig(n);if(oldStyle)return cslot.has(s)?cslot.get(s)*10:100000;
+   return pen[b][i];
+  });
+  tcS[b]=prep(B).cost;
+ }
+ const ctx={c,st,allow,enabled,desired,want,checked,unchecked,cslot,uslot,pen,tc,oldStyle,budget:Math.max(0,st.budget|0),dj:makeDjCache()};
+ ctx.djb=(b,tree,mode)=>mode==="skill"?ctx.dj(DATA[c][b],tree,penS[b],b+"S",tcS[b]):ctx.dj(DATA[c][b],tree,pen[b],b,tc[b]);
+ ctx.penS=penS;ctx.tcS=tcS;
+ buildClassNodeInfo(ctx);
+ return ctx;
+}
+function buildClassNodeInfo(ctx){
+ const keys=[...ctx.desired.keys()],kIdx=new Map(keys.map((k,i)=>[k,i])),ni=new Map();let gbit=0;
+ for(const b of ORDER)for(const n of DATA[ctx.c][b].nodes){
+  const s=sig(n),o={b,gbit:gbit++,kind:0,slot:-1,skey:-1}; // kind: 0 start, 1 checked stat, 2 unchecked stat, 3 skill/passive/orange
+  if(n.grade==="common"){if(ctx.cslot.has(s)){o.kind=1;o.slot=ctx.cslot.get(s)}else{o.kind=2;o.slot=ctx.uslot.has(s)?ctx.uslot.get(s):-1}}
+  else if(n.grade!=="none"){o.kind=3;o.skey=kIdx.get(n.grade+"|"+s);o.allow=ctx.allow.has(n.id)}
+  ni.set(n.id,o);
+ }
+ ctx.keys=keys;ctx.keyGrade=keys.map(k=>k.slice(0,k.indexOf("|")));ctx.desiredArr=keys.map(k=>ctx.desired.get(k));
+ ctx.ni=ni;ctx.words=Math.ceil(gbit/16);
+}
+function emptyInfo(ctx){return{cnt:new Int32Array(ctx.keys.length),acnt:new Int32Array(ctx.keys.length),cs:new Int32Array(ctx.checked.length),us:new Int32Array(ctx.unchecked.length),bits:new Uint16Array(ctx.words)}}
+function cloneInfo(i){return{cnt:i.cnt.slice(),acnt:i.acnt.slice(),cs:i.cs.slice(),us:i.us.slice(),bits:i.bits.slice()}}
+function applyNode(ctx,info,id){
+ const o=ctx.ni.get(id);
+ info.bits[o.gbit>>4]|=1<<(o.gbit&15);
+ if(o.kind===0||!ctx.st.enabledBoards.has(o.b))return;
+ if(o.kind===1)info.cs[o.slot]++;
+ else if(o.kind===2){if(o.slot>=0)info.us[o.slot]++}
+ else{info.cnt[o.skey]++;if(o.allow)info.acnt[o.skey]++}
+}
+function finishInfo(ctx,info){
+ const hits={unique:0,legend:0,rare:0};let avoid=0,ctotal=0,utotal=0;for(let i=0;i<info.us.length;i++)utotal+=info.us[i];info.utotal=utotal;
+ for(let k=0;k<ctx.keys.length;k++){const d=ctx.desiredArr[k],c=info.cnt[k];hits[ctx.keyGrade[k]]+=Math.min(d,c);avoid+=Math.max(0,Math.max(0,c-d)-info.acnt[k])} // approved crossings are not counted as skipped
+ for(let i=0;i<info.cs.length;i++)ctotal+=info.cs[i];
+ info.hits=hits;info.avoid=avoid;info.ctotal=ctotal;info.key=String.fromCharCode.apply(null,info.bits);
+ return info;
+}
+function classInfo(ctx,rt){const info=emptyInfo(ctx);for(const b of ORDER)for(const id of (rt[b]||[]))applyNode(ctx,info,id);return finishInfo(ctx,info)}
+function mkClassState(ctx,rt,rem){const info=classInfo(ctx,rt);return{rt,rem,info,key:info.key}}
+function extendClassState(ctx,parent,b,ids,rem){
+ const rt=addPath(parent.rt,b,ids),info=cloneInfo(parent.info),tree=parent.rt[b];
+ for(const id of ids)if(!tree.has(id))applyNode(ctx,info,id);
+ finishInfo(ctx,info);
+ return{rt,rem,info,key:info.key};
+}
+function deficit(ctx,info,n){const o=ctx.ni.get(n.id);return o.skey<0?0:ctx.desiredArr[o.skey]-info.cnt[o.skey]}
+function isSkipped(ctx,info,n){return SPECIAL.includes(n.grade)&&deficit(ctx,info,n)<=0&&!ctx.ni.get(n.id).allow}
+function cmpLexArr(a,b){for(let i=0;i<a.length;i++)if(a[i]!==b[i])return a[i]-b[i];return 0}
+function cmpHits(A,B,phase){
+ if(A.hits.unique!==B.hits.unique)return A.hits.unique-B.hits.unique;
+ if(phase==="unique")return 0;
+ if(A.hits.legend!==B.hits.legend)return A.hits.legend-B.hits.legend;
+ return A.hits.rare-B.hits.rare;
+}
+// While building: wanted nodes, fewest skipped, most checked stats, higher-ranked stats; ties keep more crystals.
+function cmpBuild(a,b,phase){
+ const A=a.info,B=b.info;let v=cmpHits(A,B,phase);if(v)return v;
+ if(A.avoid!==B.avoid)return B.avoid-A.avoid;
+ // while still collecting skills/oranges, the cheaper route wins: saved crystals buy stats later
+ if(phase!=="stats"&&a.rem!==b.rem)return a.rem-b.rem;
+ if(A.ctotal!==B.ctotal)return A.ctotal-B.ctotal;
+ v=cmpLexArr(A.cs,B.cs);if(v)return v;
+ return a.rem-b.rem;
+}
+// Original-style tie-break for the orange/skill steps (more checked stats, then MORE crystals spent).
+// Used as an extra candidate search; the final pick still uses the agreed order.
+function cmpOldStyle(a,b,phase){
+ const A=a.info,B=b.info;let v=cmpHits(A,B,phase);if(v)return v;
+ if(A.avoid+A.utotal!==B.avoid+B.utotal)return(B.avoid+B.utotal)-(A.avoid+A.utotal);
+ v=cmpLexArr(A.cs,B.cs);if(v)return v;
+ return b.rem-a.rem;
+}
+// Leftover stage: the same, then unchecked stats in list order, then more crystals spent.
+function cmpFinal(a,b){
+ const A=a.info,B=b.info;let v=cmpHits(A,B,"all");if(v)return v;
+ if(A.avoid!==B.avoid)return B.avoid-A.avoid;
+ if(A.ctotal!==B.ctotal)return A.ctotal-B.ctotal;
+ v=cmpLexArr(A.cs,B.cs);if(v)return v;
+ v=cmpLexArr(A.us,B.us);if(v)return v;
+ return b.rem-a.rem;
+}
+function pruneBeam(arr,width,cmp){
+ const seen=new Map();
+ for(const s of arr){const old=seen.get(s.key);if(!old||cmp(s,old)>0)seen.set(s.key,s)}
+ const out=[...seen.values()];out.sort((a,b)=>cmp(b,a));return out.slice(0,width);
+}
+function pathNodes(B,p,tree){const P=prep(B);return p.map(id=>B.nodes[P.idx.get(id)]).filter(n=>n&&!tree.has(n.id)&&n.grade!=="none")}
+function addPath(rt,b,p){const out={};for(const x of ORDER)out[x]=new Set(rt[x]||[]);p.forEach(id=>out[b].add(id));return out}
+// Generic candidate paths from a state to every node accepted by `isTarget`.
+function classPaths(ctx,state,isTarget,mode){
+ const out=[];
+ for(const b of ctx.enabled){
+  const B=DATA[ctx.c][b],tree=state.rt[b],dj=ctx.djb(b,tree,mode);
+  B.nodes.forEach((t,ti)=>{
+   if(tree.has(t.id)||!isTarget(t))return;
+   const p=recoverFast(B,dj.prev,tree,ti);if(!p.length)return;
+   const ns=pathNodes(B,p,tree),cost=ns.reduce((s,n)=>s+nodeCost(n),0);
+   if(cost<=0||cost>state.rem)return;
+   let skipped=0,gain=0,best=999;
+   for(const n of ns){const o=ctx.ni.get(n.id);if(o.kind===1){gain++;best=Math.min(best,o.slot)}else if(o.kind===3&&isSkipped(ctx,state.info,n))skipped++}
+   out.push({b,p,ns,cost,skipped,gain,best,t,pen:dj.d1[ti]});
+  });
+ }
+ return out;
+}
+function toStates(ctx,state,cands,limit){return cands.slice(0,limit).map(x=>extendClassState(ctx,state,x.b,x.p,state.rem-x.cost))}
+function classTargetExpansions(ctx,state,grades,limit){
+ const cand=classPaths(ctx,state,t=>grades.includes(t.grade)&&deficit(ctx,state.info,t)>0,"skill");
+ for(const x of cand){
+  let wanted=0;for(const n of x.ns)if(SPECIAL.includes(n.grade)&&deficit(ctx,state.info,n)>0)wanted++;
+  let stat=0,unc=0;for(const n of x.ns){const o=ctx.ni.get(n.id);if(o.kind===1)stat+=Math.max(1,500-o.slot*50);else if(o.kind===2)unc++}
+  x.rank=wanted*100000+stat-(x.skipped+(ctx.oldStyle?unc:0))*1000000-x.pen;
+ }
+ cand.sort((a,b)=>b.rank-a.rank||a.cost-b.cost);
+ return toStates(ctx,state,cand,limit);
+}
+// Checked stats: best ratio of checked-stat nodes per crystal, never through skipped nodes if avoidable.
+function classStatExpansions(ctx,state,limit){
+ const cand=classPaths(ctx,state,t=>ctx.ni.get(t.id).kind===1);
+ cand.sort((a,b)=>a.skipped-b.skipped||b.gain*a.cost-a.gain*b.cost||a.best-b.best||a.cost-b.cost||a.pen-b.pen);
+ return toStates(ctx,state,cand,limit);
+}
+function classUncheckedExpansions(ctx,state,limit){
+ const cand=classPaths(ctx,state,t=>ctx.ni.get(t.id).kind===2);
+ for(const x of cand)x.pri=ctx.ni.get(x.t.id).slot;
+ cand.sort((a,b)=>a.skipped-b.skipped||a.pri-b.pri||a.cost-b.cost||a.pen-b.pen);
+ return toStates(ctx,state,cand,limit);
+}
+async function beamPhase(ctx,beam,expand,cmp,width,y,label){
+ for(let round=0;round<MAX_ROUNDS;round++){
+  const pool=[...beam];let expanded=false;
+  for(const s of beam){const xs=expand(s);if(xs.length){expanded=true;pool.push(...xs)}}
+  const next=pruneBeam(pool,width,cmp);
+  if(!expanded||next.every((x,i)=>beam[i]&&x.key===beam[i].key&&x.rem===beam[i].rem))return next;
+  beam=next;
+  await y(`Daevanion: ${label}, round ${round+1}…`);
+ }
+ return beam;
+}
+function bestSpecialCandidate(ctx,rt,info,remaining,allowedGrades){
+ let best=null;
+ const st={rt,rem:remaining,info};
+ for(const x of classPaths(ctx,st,t=>allowedGrades.includes(t.grade)&&deficit(ctx,info,t)>0,"skill")){
+  let wantedGain=0,statGain=0;const virtual=new Map();
+  for(const n of x.ns){
+   if(SPECIAL.includes(n.grade)){const k=n.grade+"|"+sig(n),before=virtual.get(k)||0;if(before<deficit(ctx,info,n)){wantedGain++;virtual.set(k,before+1)}}
+   else{const o=ctx.ni.get(n.id);if(o.kind===1)statGain+=Math.max(0,100-o.slot*12)}
+  }
+  const score=(wantedGain*100000+statGain)/x.cost;
+  const cand={b:x.b,p:x.p,marginal:x.cost,wantedGain,score,pen:x.pen};
+  if(!best||cand.score>best.score||(cand.score===best.score&&(cand.wantedGain>best.wantedGain||(cand.wantedGain===best.wantedGain&&(cand.marginal<best.marginal||(cand.marginal===best.marginal&&cand.pen<best.pen))))))best=cand;
+ }
+ return best;
+}
+function classDesiredUniqueTotal(ctx){let t=0;for(const [k,d] of ctx.desired)if(k.startsWith("unique|"))t+=d;return t}
+function classOrangeFeasible(ctx){
+ const rt=emptyRoutes(ctx.c);let rem=ctx.budget,guard=0;
+ while(rem>0&&guard++<10000){
+  const x=bestSpecialCandidate(ctx,rt,classInfo(ctx,rt),rem,["unique"]);if(!x)break;
+  x.p.forEach(id=>rt[x.b].add(id));rem-=x.marginal;
+ }
+ return classInfo(ctx,rt).hits.unique>=classDesiredUniqueTotal(ctx);
+}
+// Remove low-value nodes the route can do without: unchecked stats, skipped nodes, and checked stats ranked
+// at/below `thr`. A node goes if it is a dead end OR a redundant bridge (everything stays connected to the
+// start without it). Lowest-value nodes are tried first. Freed crystals are then regrown in priority order.
+function boardConnected(B,P,tree){
+ const start=startNode(B);if(!tree.has(start.id))return tree.size===0;
+ const seen=new Set([start.id]),q=[P.idx.get(start.id)];
+ while(q.length){const i=q.pop();for(const v of P.adj[i]){const id=B.nodes[v].id;if(tree.has(id)&&!seen.has(id)){seen.add(id);q.push(v)}}}
+ return seen.size===tree.size;
+}
+function pruneClassState(ctx,state,thr){
+ const rt={};let freed=0,changed=false;
+ // value order: lower = removed first
+ const value=n=>{const o=ctx.ni.get(n.id);if(o.kind===3)return 0;if(o.kind===2)return 1+(ctx.unchecked.length-o.slot);return 100+(ctx.checked.length-o.slot)};
+ for(const b of ORDER){
+  const B=DATA[ctx.c][b],P=prep(B),tree=new Set(state.rt[b]||[]);
+  const removable=n=>{const o=ctx.ni.get(n.id);return o.kind===2||(o.kind===1&&o.slot>=thr)||(o.kind===3&&ctx.want(n)<=0)};
+  let again=true;
+  while(again){
+   again=false;
+   const cands=[...tree].map(id=>B.nodes[P.idx.get(id)]).filter(removable).sort((x,y)=>value(x)-value(y));
+   for(const n of cands){
+    tree.delete(n.id);
+    if(boardConnected(B,P,tree)){freed+=nodeCost(n);again=true;changed=true}
+    else tree.add(n.id);
+   }
+  }
+  rt[b]=tree;
+ }
+ return changed?mkClassState(ctx,rt,state.rem+freed):null;
+}
+// Re-connect everything worth keeping (start, wanted skills/passives/oranges, checked stats) with the cheapest
+// tree we can find (repeatedly attach the nearest kept node). Saved crystals can then buy more checked stats.
+function reconnectClassState(ctx,state,mode){
+ const rt={};let saved=0;
+ for(const b of ORDER){
+  const B=DATA[ctx.c][b],P=prep(B),cur=state.rt[b]||new Set();
+  if(!cur.size){rt[b]=new Set();continue}
+  const start=startNode(B),keep=new Set();
+  for(const id of cur){const n=B.nodes[P.idx.get(id)],o=ctx.ni.get(id);if(o.kind===1||(o.kind===3&&ctx.want(n)>0))keep.add(id)}
+  const tree=new Set([start.id]);
+  const tc=mode==="skill"?ctx.tcS[b]:ctx.tc[b],pen=mode==="skill"?ctx.penS[b]:ctx.pen[b];
+  while(true){
+   const left=[...keep].filter(id=>!tree.has(id));if(!left.length)break;
+   const dj=dijkstraFast(B,tree,pen,tc);
+   // dijkstraFast only returns d1; recompute travel cost along the recovered path
+   let bestP=null,bestC=Infinity;
+   for(const id of left){const p=recoverFast(B,dj.prev,tree,P.idx.get(id));if(!p.length)continue;let c=0;for(const x of p)if(!tree.has(x))c+=tc[P.idx.get(x)];if(c<bestC){bestC=c;bestP=p}}
+   if(!bestP)return null;
+   bestP.forEach(id=>tree.add(id));
+  }
+  const oldCost=[...cur].reduce((t,id)=>t+nodeCost(B.nodes[P.idx.get(id)]),0),newCost=[...tree].reduce((t,id)=>t+nodeCost(B.nodes[P.idx.get(id)]),0);
+  if(newCost>oldCost){rt[b]=new Set(cur);continue}
+  saved+=oldCost-newCost;rt[b]=tree;
+ }
+ if(saved<=0)return null;
+ return mkClassState(ctx,rt,state.rem+saved);
+}
+// For skills/passives/oranges where you want fewer copies than exist (e.g. 2 of 4), the copies are
+// interchangeable. Try giving up one taken copy for a different copy, then regrow: a different copy can open
+// up Attack/Crit that is otherwise only reachable through a skipped node.
+function keepConnected(ctx,rt){
+ const out={};let freed=0;
+ for(const b of ORDER){
+  const B=DATA[ctx.c][b],P=prep(B),tree=rt[b]||new Set();
+  if(!tree.size){out[b]=new Set();continue}
+  const start=startNode(B),seen=new Set([start.id]),q=[P.idx.get(start.id)];
+  while(q.length){const i=q.pop();for(const v of P.adj[i]){const id=B.nodes[v].id;if(tree.has(id)&&!seen.has(id)){seen.add(id);q.push(v)}}}
+  for(const id of tree)if(!seen.has(id))freed+=nodeCost(B.nodes[P.idx.get(id)]);
+  out[b]=seen;
+ }
+ return{rt:out,freed};
+}
+async function swapCopies(ctx,best,y){
+ const quiet=async()=>{};
+ const groups=new Map();
+ for(const b of ctx.enabled){const B=DATA[ctx.c][b];for(const n of B.nodes){if(!SPECIAL.includes(n.grade))continue;const k=n.grade+"|"+sig(n);if(!groups.has(k))groups.set(k,[]);groups.get(k).push({b,n})}}
+ for(let pass=0;pass<4;pass++){
+  let improved=false;
+  for(const [k,copies] of groups){
+   const d=ctx.desired.get(k)||0;if(d<=0||d>=copies.length)continue;
+   const taken=copies.filter(x=>best.rt[x.b].has(x.n.id)),free=copies.filter(x=>!best.rt[x.b].has(x.n.id));
+   for(const x of taken){
+    if(improved)break;
+    const rt0={};for(const b of ORDER)rt0[b]=new Set(best.rt[b]||[]);rt0[x.b].delete(x.n.id);
+    const kc=keepConnected(ctx,rt0);
+    const base=mkClassState(ctx,kc.rt,best.rem+nodeCost(x.n)+kc.freed);
+    for(const z of free){
+     const B=DATA[ctx.c][z.b],P=prep(B),tree=base.rt[z.b];if(!tree.size)continue;
+     const dj=ctx.djb(z.b,tree,"skill"),p=recoverFast(B,dj.prev,tree,P.idx.get(z.n.id));if(!p.length)continue;
+     const cost=pathNodes(B,p,tree).reduce((t,n)=>t+nodeCost(n),0);if(cost>base.rem)continue;
+     let st=extendClassState(ctx,base,z.b,p,base.rem-cost);
+     let beam=await beamPhase(ctx,[st],s=>classTargetExpansions(ctx,s,["unique","legend","rare"],8),(a,b)=>cmpBuild(a,b,"special"),8,quiet,"");
+     beam=await beamPhase(ctx,beam,s=>classStatExpansions(ctx,s,8),(a,b)=>cmpBuild(a,b,"stats"),10,quiet,"");
+     if(beam[0]&&cmpBuild(beam[0],best,"stats")>0){best=beam[0];improved=true;break}
+     await y("Daevanion: trying other skill copies…");
+    }
+   }
+  }
+  if(!improved)break;
+ }
+ return best;
+}
+async function buildClassRoute(ctx,y,oldStyle){
+ const cP=oldStyle?cmpOldStyle:cmpBuild;
+ let beam=[mkClassState(ctx,emptyRoutes(ctx.c),ctx.budget)];
+ beam=await beamPhase(ctx,beam,s=>classTargetExpansions(ctx,s,["unique"],12),(a,b)=>cP(a,b,"unique"),36,y,"orange nodes");
+ const must=classDesiredUniqueTotal(ctx);
+ if(must>0&&classOrangeFeasible(ctx)){const keep=beam.filter(s=>s.info.hits.unique>=must);if(keep.length)beam=keep}
+ beam=await beamPhase(ctx,beam,s=>classTargetExpansions(ctx,s,["legend","rare"],14),(a,b)=>cP(a,b,"special"),40,y,"skills & passives");
+ beam=await beamPhase(ctx,beam,s=>classStatExpansions(ctx,s,14),(a,b)=>cmpBuild(a,b,"stats"),48,y,"checked stats");
+ let best=beam[0];
+ // improvement: cut low-value dead ends, regrow checked stats, keep only strict improvements
+ const quiet=async()=>{};
+ for(let iter=0;iter<20;iter++){
+  let improved=false;
+  const starts=[reconnectClassState(ctx,best),reconnectClassState(ctx,best,"skill")];
+  for(let thr=ctx.checked.length;thr>=0;thr--)starts.push(pruneClassState(ctx,best,thr));
+  for(const pruned of starts){
+   if(improved)break;if(!pruned)continue;
+   let regrow=await beamPhase(ctx,[pruned],s=>classTargetExpansions(ctx,s,["legend","rare"],10),(a,b)=>cmpBuild(a,b,"special"),12,quiet,"");
+   const cand=(await beamPhase(ctx,regrow,s=>classStatExpansions(ctx,s,10),(a,b)=>cmpBuild(a,b,"stats"),16,quiet,""))[0];
+   if(cand&&cmpBuild(cand,best,"stats")>0){best=cand;improved=true}
+   await y(`Daevanion: improving route…`);
+  }
+  if(!improved)break;
+ }
+ const swapped=await swapCopies(ctx,best,y);
+ if(swapped!==best){
+  best=swapped;
+  for(let iter=0;iter<10;iter++){
+   let improved=false;
+   for(const pruned of [reconnectClassState(ctx,best),pruneClassState(ctx,best,ctx.checked.length)]){
+    if(improved||!pruned)continue;
+    const cand=(await beamPhase(ctx,[pruned],s=>classStatExpansions(ctx,s,10),(a,b)=>cmpBuild(a,b,"stats"),16,quiet,""))[0];
+    if(cand&&cmpBuild(cand,best,"stats")>0){best=cand;improved=true}
+   }
+   if(!improved)break;
+  }
+ }
+ return best;
+}
+function fillLeftovers(ctx,best){
+ // last resort: any affordable neighbour – unchecked stats first, skipped nodes last, cheapest first
+ for(let guard=0;guard<2000&&best.rem>0;guard++){
+  let pick=null;
+  for(const b of ctx.enabled){
+   const B=DATA[ctx.c][b],P=prep(B),tree=best.rt[b];
+   for(const id of tree)for(const vi of P.adj[P.idx.get(id)]){
+    const n=B.nodes[vi];if(tree.has(n.id)||n.grade==="none"||nodeCost(n)>best.rem)continue;
+    const o=ctx.ni.get(n.id),tier=o.kind===1?0:o.kind===3&&deficit(ctx,best.info,n)>0?0:o.kind===2?1:2;
+    const k=[tier,o.kind===1||o.kind===2?o.slot:0,nodeCost(n)];
+    if(!pick||k[0]<pick.k[0]||(k[0]===pick.k[0]&&(k[1]<pick.k[1]||(k[1]===pick.k[1]&&k[2]<pick.k[2]))))pick={b,n,k};
+   }
+  }
+  if(!pick)break;
+  best=extendClassState(ctx,best,pick.b,[pick.n.id],best.rem-nodeCost(pick.n));
+ }
+
+ return best;
+}
+async function solveClass(c,onProgress){
+ const y=makeYielder(onProgress);
+ // two tie-break variants (rank-ordered vs. equal) – keep whichever reaches more by the agreed priority
+ let ctx=classCtx(c,0),best=await buildClassRoute(ctx,y,false);
+ const tries=[[classCtx(c,0,true),true]];if(ctx.checked.length>1)tries.push([classCtx(c,1),false]);
+ for(const [cx,old] of tries){
+  const alt=await buildClassRoute(cx,y,old);
+  if(cmpBuild(alt,best,"stats")>0)best=mkClassState(ctx,alt.rt,alt.rem);
+ }
+ // leftovers: unchecked stats in list order
+ let beam=await beamPhase(ctx,[best],s=>classUncheckedExpansions(ctx,s,10),cmpFinal,16,y,"leftover crystals");
+ best=beam[0];
+ best=fillLeftovers(ctx,best);
+ // polish: free crystals stuck in redundant low-value nodes and re-spend them in priority order
+ for(let iter=0;iter<10;iter++){
+  const pruned=pruneClassState(ctx,best,ctx.checked.length);if(!pruned)break;
+  let b2=await beamPhase(ctx,[pruned],s=>classStatExpansions(ctx,s,10),(a,b)=>cmpBuild(a,b,"stats"),16,y,"re-spending freed crystals");
+  b2=await beamPhase(ctx,b2,s=>classUncheckedExpansions(ctx,s,10),cmpFinal,16,y,"re-spending freed crystals");
+  const cand=fillLeftovers(ctx,b2[0]);
+  if(cmpFinal(cand,best)>0)best=cand;else break;
+ }
+ return{routes:best.rt,remaining:best.rem,offers:crossingOffers(c,best.rt)};
+}
+
+// ===================== ASK-TO-CROSS OFFERS =====================
+// A checked stat that can only be reached through skipped nodes (unchecked skills/passives/oranges or extra
+// copies) is never taken. For each such stat, find the cheapest route from the current route and offer it to
+// the user. If they approve, the skipped nodes on that route are allowed (no longer avoided) and the
+// optimizer runs again under the normal priority rules.
+function crossingKey(c,b,ids){return c+"|"+b+"|"+[...ids].sort((x,y)=>x-y).join(",")}
+function crossingOffers(c,rt){
+ const ctx=classCtx(c,0),info=classInfo(ctx,rt),st=ctx.st,groups=new Map();
+ for(const b of ctx.enabled){
+  const B=DATA[c][b],P=prep(B),tree=rt[b]||new Set();if(!tree.size)continue;
+  const skip=B.nodes.map(n=>isSkipped(ctx,info,n));
+  // 1) is it reachable without crossing anything skipped? then it was left out for budget/priority, no offer
+  const travelAvoid=Float64Array.from(B.nodes,(n,i)=>nodeCost(n)+(skip[i]?SKIP_COST:0));
+  const zero=new Float64Array(P.N);
+  const djA=dijkstraFast(B,tree,zero,travelAvoid);
+  // 2) cheapest route in crystals; at equal cost, fewer skipped nodes
+  const penX=Float64Array.from(B.nodes,(n,i)=>skip[i]?1:0);
+  const djC=dijkstraFast(B,tree,penX,P.cost);
+  B.nodes.forEach((t,ti)=>{
+   if(tree.has(t.id)||ctx.ni.get(t.id).kind!==1)return;
+   const pA=recoverFast(B,djA.prev,tree,ti);if(!pA.length)return;
+   if(pathNodes(B,pA,tree).reduce((s,n)=>s+travelAvoid[P.idx.get(n.id)],0)<SKIP_COST)return;
+   const p=recoverFast(B,djC.prev,tree,ti);if(!p.length)return;
+   const ns=pathNodes(B,p,tree),cross=ns.filter(n=>skip[P.idx.get(n.id)]);if(!cross.length)return;
+   const key=crossingKey(c,b,cross.map(n=>n.id));if(st.crossDeclined.has(key))return;
+   if(!groups.has(key))groups.set(key,{key,board:b,cross:cross.map(n=>({id:n.id,name:displayName(n),row:n.row,col:n.col,cost:nodeCost(n),grade:n.grade})),targets:[]});
+   groups.get(key).targets.push({id:t.id,name:displayName(t),row:t.row,col:t.col,cost:ns.reduce((s,n)=>s+nodeCost(n),0),path:ns.map(n=>n.id)});
+  });
+ }
+ const out=[...groups.values()];
+ for(const g of out){g.targets.sort((a,b)=>a.cost-b.cost);g.cost=g.targets[0].cost}
+ return out.sort((a,b)=>ORDER.indexOf(a.board)-ORDER.indexOf(b.board)||a.cost-b.cost);
+}
+function approveCrossing(c,offer){for(const x of offer.cross)states[c].crossAllowed.add(x.id)}
+function declineCrossing(c,offer){states[c].crossDeclined.add(offer.key)}
+
+// ===================== SINGLE-BOARD SOLVER (Azphel / Ariel) =====================
+function nsig(n){return `${n.grade}|${sig(n)}`}
+function azDesiredCountBySig(s){
+ const st=azStates[cls],g=azGroups(),max=g.rare.get(s)?.count||0;
+ if(st.rareMode==="basic")return st.rareEnabled.has(s)?max:0;
+ return st.rareEnabled.has(s)?Math.min(max,Math.max(0,st.rareCounts[s]||0)):0;
+}
+function azCurrentRareCount(tree,s){let x=0;for(const n of DATA.Azphel.nodes)if(tree.has(n.id)&&n.grade==="rare"&&nsig(n)===s)x++;return x}
+function azDesired(n){
+ const st=azStates[cls],s=nsig(n);
+ if(n.grade==="rare")return azDesiredCountBySig(s)>0;
+ if(n.grade==="legend")return st.legend.has(s);
+ if(n.grade==="unique")return st.unique.has(s);
+ return false;
+}
+// Wanted copies of a blue legend / orange unique group. Basic = all copies if checked; Ariel Advanced = exact number.
+function capDesired(kind,grade,s){
+ const az=kind==="az",st=az?azStates[cls]:arStates[cls],g=(az?azGroups():arGroups())[grade].get(s),max=g?g.count:0;
+ const set=grade==="legend"?st.legend:st.unique;
+ const mode=az?"basic":(grade==="legend"?st.legendMode:st.uniqueMode);
+ if(mode!=="advanced")return set.has(s)?max:0;
+ const counts=grade==="legend"?st.legendCounts:st.uniqueCounts;
+ return Math.min(max,Math.max(0,counts[s]||0));
+}
+function arWanted(n){
+ const st=arStates[cls],s=nsig(n);
+ if(n.grade==="rare")return st.rareEnabled.has(s);
+ if(n.grade==="legend"||n.grade==="unique")return capDesired("ar",n.grade,s)>0;
+ return false;
+}
+// Builds the config that captures every difference between the Azphel and Ariel optimizers.
+function singleCtx(kind){
+ const az=kind==="az",B=az?DATA.Azphel:DATA.Ariel,st=az?azStates[cls]:arStates[cls];prep(B);
+ const cRank=new Map(st.common.map((s,i)=>[s,i])),rRank=new Map(st.rare.map((s,i)=>[s,i]));
+ const cr=s=>cRank.has(s)?cRank.get(s):999,rr=s=>rRank.has(s)?rRank.get(s):999;
+ const azDes=new Map();if(az)for(const s of azGroups().rare.keys())azDes.set(s,azDesiredCountBySig(s));
+ const isAvoid=n=>{const s=nsig(n);
+  if(n.grade==="common")return!st.commonEnabled.has(s);
+  if(n.grade==="rare")return!st.rareEnabled.has(s);
+  return false};
+ const capSigs=[...new Set(B.nodes.filter(n=>n.grade==="legend"||n.grade==="unique").map(nsig))];
+ const capDes=new Map(capSigs.map(s=>[s,capDesired(kind,s.slice(0,s.indexOf("|")),s)]));
+ const pen=Float64Array.from(B.nodes,n=>{const s=nsig(n);
+  if(n.grade==="common")return st.commonEnabled.has(s)?cr(s)*(az?10:25):100000;
+  if(n.grade==="rare")return st.rareEnabled.has(s)?rr(s)*(az?2:15):100000;
+  if(n.grade==="legend")return capDes.get(s)>0?0:3000;
+  if(n.grade==="unique")return capDes.get(s)>0?0:5000;
+  return 0});
+ const rareCounted=n=>az?(azDes.get(nsig(n))||0)>0:st.rareEnabled.has(nsig(n));
+ const commonSigs=st.common.filter(s=>st.commonEnabled.has(s));
+ return{az,B,st,pen,cr,rr,isAvoid,capSigs,capDes,rareCounted,commonSigs,azDes,budget:Math.max(0,st.budget|0),dj:makeDjCache(),
+  _:0,phases:az?[["unique","unique",36,MAX_ROUNDS],["special","other",36,MAX_ROUNDS],["stats",null,44,MAX_ROUNDS]]
+           :[["unique",["unique"],36,MAX_ROUNDS],["special",["legend","rare"],36,MAX_ROUNDS],["stats",null,44,MAX_ROUNDS]]};
+}
+function buildSingleNodeInfo(K){
+ const slot=new Map(K.commonSigs.map((s,i)=>[s,i])),rareSigs=[...new Set(K.B.nodes.filter(n=>n.grade==="rare").map(nsig))],rIdx=new Map(rareSigs.map((s,i)=>[s,i]));
+ K.rareSigs=rareSigs;K.rIdx=rIdx;
+ K.cIdx=new Map(K.capSigs.map((s,i)=>[s,i]));K.capDesArr=K.capSigs.map(s=>K.capDes.get(s));K.capIsU=K.capSigs.map(s=>s.startsWith("unique|"));
+ K.ni=new Map(K.B.nodes.map((n,i)=>{const s=nsig(n),o={bit:i,r:0,avoid:0,slot:-1,val:effectValue(n.effect),ri:-1,ci:-1};
+  if(n.grade!=="none"){
+   if(n.grade==="common")o.slot=slot.has(s)?slot.get(s):-1;
+   if(n.grade==="rare")o.ri=rIdx.get(s);
+   if(n.grade==="legend"||n.grade==="unique")o.ci=K.cIdx.get(s);
+   else if(n.grade==="rare"&&K.rareCounted(n))o.r=1;
+   o.avoid=K.isAvoid(n)?1:0;
+  }
+  return[n.id,o]}));
+ K.words=Math.ceil(K.B.nodes.length/16);
+}
+function singleApply(K,info,id){
+ const o=K.ni.get(id);info.bits[o.bit>>4]|=1<<(o.bit&15);
+ info.r+=o.r;info.baseAvoid+=o.avoid;
+ if(o.ci>=0)info.capCnt[o.ci]++;
+ if(o.slot>=0)info.stats[o.slot]+=o.val;
+ if(o.ri>=0)info.rareCnt[o.ri]++;
+}
+// Blue/orange: copies up to the wanted number count as hits; extra or unwanted copies count as "avoid".
+function singleFinish(K,info){
+ let u=0,l=0,avoid=info.baseAvoid;
+ for(let i=0;i<K.capSigs.length;i++){
+  const d=K.capDesArr[i],c=info.capCnt[i],h=Math.min(d,c);
+  if(K.capIsU[i])u+=h;else l+=h;
+  avoid+=d>0?Math.max(0,c-d):c;
+ }
+ info.u=u;info.l=l;info.avoid=avoid;return info;
+}
+function singleInfo(K,tree){
+ const info={r:0,baseAvoid:0,stats:new Float64Array(K.commonSigs.length),rareCnt:new Int32Array(K.rareSigs.length),capCnt:new Int32Array(K.capSigs.length),bits:new Uint16Array(K.words)};
+ for(const id of tree)singleApply(K,info,id);
+ return singleFinish(K,info);
+}
+function capDeficit(K,info,n){const i=K.cIdx.get(nsig(n));return i===undefined?0:K.capDesArr[i]-info.capCnt[i]}
+function pathAvoid(K,info,n){return(n.grade==="legend"||n.grade==="unique")?capDeficit(K,info,n)<=0:K.isAvoid(n)}
+function mkSingle(K,tree,rem){const info=singleInfo(K,tree);return{tree,rem,info,key:String.fromCharCode.apply(null,info.bits)}}
+function extendSingle(K,parent,ids,rem){
+ const tree=new Set(parent.tree),p=parent.info,info={r:p.r,baseAvoid:p.baseAvoid,stats:p.stats.slice(),rareCnt:p.rareCnt.slice(),capCnt:p.capCnt.slice(),bits:p.bits.slice()};
+ for(const id of ids)if(!tree.has(id)){tree.add(id);singleApply(K,info,id)}
+ singleFinish(K,info);
+ return{tree,rem,info,key:String.fromCharCode.apply(null,info.bits)};
+}
+function cmpSingle(K,a,b,phase){
+ const A=a.info,B=b.info;
+ if(A.u!==B.u)return A.u-B.u;
+ if(phase!=="unique"){if(A.l!==B.l)return A.l-B.l;if(A.r!==B.r)return A.r-B.r}
+ if(A.avoid!==B.avoid)return B.avoid-A.avoid;
+ const sv=lexCmpVec(A.stats,B.stats);if(sv)return sv;
+ const sa=K.budget-a.rem,sb=K.budget-b.rem;
+ if(sa!==sb)return sa-sb;
+ return a.rem===b.rem?0:(a.rem<b.rem?1:-1);
+}
+function singleBranchExpansions(K,state,arg,limit){
+ const B=K.B,st=K.st,tree=state.tree,dj=K.dj(B,tree,K.pen,"s"),cand=[];
+ B.nodes.forEach((t,ti)=>{
+  if(tree.has(t.id))return;const sg=nsig(t);let target;
+  if(K.az){
+   if(arg==="unique")target=t.grade==="unique"&&capDeficit(K,state.info,t)>0;
+   else target=(t.grade==="rare"&&(K.azDes.get(sg)||0)-state.info.rareCnt[K.rIdx.get(sg)]>0)||(t.grade==="legend"&&capDeficit(K,state.info,t)>0);
+  }else target=arg.includes(t.grade)&&(t.grade==="rare"?st.rareEnabled.has(sg):capDeficit(K,state.info,t)>0);
+  if(!target)return;
+  const p=recoverFast(B,dj.prev,tree,ti);if(!p.length)return;
+  const ns=pathNodes(B,p,tree);
+  const cost=ns.reduce((s,n)=>s+nodeCost(n),0);if(cost<=0||cost>state.rem)return;
+  let avoid=0,val=0;
+  for(const n of ns){
+   const x=nsig(n);
+   if(n.grade==="common"){if(!st.commonEnabled.has(x))avoid++;else val+=Math.max(1,400-K.cr(x)*40)}
+   else if(K.az){
+    if(n.grade==="rare"){if(!st.rareEnabled.has(x))avoid++;else val+=Math.max(1,30000-K.rr(x)*400)}
+    else if(n.grade==="legend"){if(pathAvoid(K,state.info,n))avoid++;else val+=50000}
+    else if(n.grade==="unique"){if(pathAvoid(K,state.info,n))avoid++;else val+=100000}
+   }else{if(n.grade==="rare"?!st.rareEnabled.has(x):pathAvoid(K,state.info,n))avoid++;else val+=50000}
+  }
+  cand.push({p,cost,val:val-avoid*1000000-dj.d1[ti]});
+ });
+ cand.sort((a,b)=>b.val-a.val||a.cost-b.cost);
+ return cand.slice(0,limit).map(x=>extendSingle(K,state,x.p,state.rem-x.cost));
+}
+function singleCommonExpansions(K,state,limit){
+ const B=K.B,st=K.st,tree=state.tree,dj=K.dj(B,tree,K.pen,"s"),cand=[];
+ B.nodes.forEach((t,ti)=>{
+  const sg=nsig(t);if(tree.has(t.id)||t.grade!=="common"||!st.commonEnabled.has(sg))return;
+  const p=recoverFast(B,dj.prev,tree,ti);if(!p.length)return;
+  const ns=pathNodes(B,p,tree);
+  const cost=ns.reduce((s,n)=>s+nodeCost(n),0);if(cost<=0||cost>state.rem)return;
+  let avoid=0;for(const n of ns)if(pathAvoid(K,state.info,n))avoid++;
+  cand.push({p,cost,pri:K.cr(sg),avoid,pen:dj.d1[ti]});
+ });
+ cand.sort((a,b)=>a.avoid-b.avoid||a.pri-b.pri||a.cost-b.cost||a.pen-b.pen);
+ return cand.slice(0,limit).map(x=>extendSingle(K,state,x.p,state.rem-x.cost));
+}
+function singleUniqueMust(K){let t=0;K.capSigs.forEach((s,i)=>{if(K.capIsU[i])t+=K.capDesArr[i]});return t}
+function singleOrangeFeasible(K){
+ const B=K.B,start=startNode(B),tree=new Set(start?[start.id]:[]);
+ let rem=K.budget,guard=0;
+ while(rem>0&&guard++<5000){
+  const dj=K.dj(B,tree,K.pen,"s"),ti0=singleInfo(K,tree);let best=null;
+  B.nodes.forEach((t,ti)=>{
+   if(tree.has(t.id)||t.grade!=="unique"||capDeficit(K,ti0,t)<=0)return;
+   const p=recoverFast(B,dj.prev,tree,ti);if(!p.length)return;
+   const cost=pathNodes(B,p,tree).reduce((s,n)=>s+nodeCost(n),0);if(cost<=0||cost>rem)return;
+   const c={p,cost,pen:dj.d1[ti]};
+   if(!best||c.cost<best.cost||(c.cost===best.cost&&c.pen<best.pen))best=c;
+  });
+  if(!best)break;
+  best.p.forEach(id=>tree.add(id));rem-=best.cost;
+ }
+ return singleInfo(K,tree).u>=singleUniqueMust(K);
+}
+async function solveSingle(kind,onProgress){
+ const K=singleCtx(kind);buildSingleNodeInfo(K);const B=K.B,P=prep(B),start=startNode(B),base=new Set(start?[start.id]:[]);
+ const label=K.az?"Azphel":"Ariel",y=makeYielder(onProgress);
+ if(!K.az&&!K.st.enabled)return{route:base,remaining:K.budget};
+ let beam=[mkSingle(K,base,K.budget)];
+ for(const [name,arg,width,rounds] of K.phases){
+  const cmp=(a,b)=>cmpSingle(K,a,b,name);
+  for(let round=0;round<rounds;round++){
+   const pool=[...beam];let added=false;
+   for(const s of beam){
+    const xs=name==="stats"?singleCommonExpansions(K,s,10):singleBranchExpansions(K,s,arg,12);
+    if(xs.length){pool.push(...xs);added=true}
+   }
+   if(!added)break;
+   const next=pruneBeam(pool,width,cmp);
+   if(next.length===beam.length&&next.every((x,i)=>x.key===beam[i].key))break;
+   beam=next;
+   await y(`${label}: ${name} phase, round ${round+1}…`);
+  }
+  if(name==="unique"){
+   const must=singleUniqueMust(K);
+   if(must>0&&singleOrangeFeasible(K)){
+    const keep=beam.filter(s=>s.info.u>=must);
+    if(keep.length)beam=keep;
+   }
+  }
+ }
+ const st=K.st,cmp=(a,b)=>cmpSingle(K,a,b,"stats");
+ for(let round=0;round<400;round++){
+  const pool=[...beam];let added=false;
+  for(const s of beam){
+   const cand=[],seen=new Set();
+   for(const id of s.tree)for(const vi of P.adj[P.idx.get(id)]||[]){
+    const n=B.nodes[vi];
+    if(s.tree.has(n.id)||seen.has(n.id))continue;seen.add(n.id);
+    if(n.grade==="none"||nodeCost(n)>s.rem)continue;
+    const sg=nsig(n);let avoid=0,pri=999;
+    if(n.grade==="common"){if(!st.commonEnabled.has(sg))avoid=1;else pri=K.cr(sg)}
+    else if(n.grade==="rare"){if(!st.rareEnabled.has(sg))avoid=1;else pri=K.rr(sg)}
+    else if((n.grade==="legend"||n.grade==="unique")&&capDeficit(K,s.info,n)<=0)avoid=1;
+    cand.push({n,avoid,pri});
+   }
+   cand.sort((a,b)=>a.avoid-b.avoid||a.pri-b.pri||nodeCost(a.n)-nodeCost(b.n));
+   for(const x of cand.slice(0,7)){pool.push(extendSingle(K,s,[x.n.id],s.rem-nodeCost(x.n)));added=true}
+  }
+  if(!added)break;
+  const next=pruneBeam(pool,42,cmp);
+  if(next.length===beam.length&&next.every((x,i)=>x.key===beam[i].key))break;
+  beam=next;
+  await y(`${label}: filling leftover crystals, round ${round+1}…`);
+ }
+ beam.sort((a,b)=>cmp(b,a));
+ const best=beam[0]||{tree:base,rem:K.budget};
+ return{route:best.tree,remaining:best.rem};
+}
+const solveAz=p=>solveSingle("az",p);
+const solveAr=p=>solveSingle("ar",p);
+//==ENGINE_END==
+
+// ===================== UI =====================
+const $=id=>document.getElementById(id);
+const classbar=$("classbar"),className=$("className"),boardTabs=$("boardTabs"),board=$("board"),classChecklist=$("classChecklist"),
+ classStatus=$("classStatus"),boardCost=$("boardCost"),totalCost=$("totalCost"),remain=$("remain"),specialsHit=$("specialsHit"),
+ dBudget=$("dBudget"),prioNote=$("prioNote"),budgetLabel=$("budgetLabel"),budgetExample=$("budgetExample"),budgetHint=$("budgetHint"),
+ optimizeBtn=$("optimizeBtn"),crossOffers=$("crossOffers"),sumTitle1=$("sumTitle1"),sumTitle2=$("sumTitle2"),sumTitle3=$("sumTitle3"),sumTitle4=$("sumTitle4");
+const DIRTY_MSG='<span class="dirty">Priorities changed. Press Optimize.</span>';
+const CLASS_NOTE=prioNote.innerHTML;
+// Ariel and Azphel are tabs next to the class boards; their crystals, priorities and results only show while open.
+const isSingleTab=()=>activeBoard==="Ariel"||activeBoard==="Azphel";
+
+function markClassDirty(){dirty[cls]=true;if(!isSingleTab())classStatus.innerHTML=DIRTY_MSG;if(typeof renderOffers==="function")renderOffers()}
+function markAzDirty(){azDirty[cls]=true;if(activeBoard==="Azphel")classStatus.innerHTML='<span class="dirty">Azphel priorities changed. Press Optimize.</span>'}
+function markArDirty(){arDirty[cls]=true;classStatus.innerHTML='<span class="dirty">Ariel priorities changed. Press Optimize.</span>'}
+
+let optimizing=false;
+async function runCurrentOptimize(){
+ if(optimizing)return;optimizing=true;
+ optimizeBtn.disabled=true;
+ const old=optimizeBtn.textContent;optimizeBtn.textContent="Optimizing…";
+ const prog=el=>msg=>{el.innerHTML=`<span class="dirty">${msg}</span>`};
+ try{
+  if(activeBoard==="Azphel"){
+   const az=await solveAz(prog(classStatus));lastAzResult[cls]=az;azStates[cls].route=az.route;azDirty[cls]=false;renderAzFromResult(az);
+   return;
+  }
+  if(activeBoard==="Ariel"){
+   const res=await solveAr(prog(classStatus));lastArResult[cls]=res;arStates[cls].route=res.route;arDirty[cls]=false;renderArielBoard();renderArielMetricsFromResult(res);renderArielSummary();
+  }else{
+   const res=await solveClass(cls,prog(classStatus));lastClassResult[cls]=res;routes[cls]=res.routes;dirty[cls]=false;offerHighlight=null;renderBoard();renderClassMetrics(res);renderOffers();
+  }
+  const az=await solveAz(()=>{});lastAzResult[cls]=az;azStates[cls].route=az.route;azDirty[cls]=false;renderAzFromResult(az);
+ }catch(e){
+  classStatus.innerHTML=`<span class="bad">Something went wrong while optimizing: ${e.message}</span>`;console.error(e);
+ }finally{
+  optimizeBtn.disabled=false;optimizeBtn.textContent=old;optimizing=false;
+ }
+}
+function renderClasses(){
+ classbar.innerHTML="";
+ for(const c of CLASSES){
+  const b=document.createElement("button");b.textContent=c;b.className=c===cls?"active":"";
+  b.onclick=()=>{if(c===cls||optimizing)return;cls=c;activeBoard=ORDER.find(x=>states[c].enabledBoards.has(x))||"Nezekan";renderAll()};
+  classbar.appendChild(b);
+ }
+ className.textContent=cls;
+}
+function renderTabs(){
+ boardTabs.innerHTML="";const enabled=states[cls].enabledBoards;
+ for(const b of ORDER){
+  const wrap=document.createElement("span");wrap.className="tabwrap"+(enabled.has(b)?"":" disabled");
+  const cb=document.createElement("input");cb.type="checkbox";cb.checked=enabled.has(b);cb.title=`Enable/disable ${b}`;
+  cb.onchange=e=>{
+   e.stopPropagation();cb.checked?enabled.add(b):enabled.delete(b);
+   clampAdvancedCounts();markClassDirty();
+   // on the Ariel/Azphel tab, a class board checkbox only changes the class settings, not the open tab
+   if(isSingleTab()){renderTabs();return}
+   if(!enabled.has(activeBoard)){const next=ORDER.find(x=>enabled.has(x));if(next)activeBoard=next;else if(arStates[cls].enabled)activeBoard="Ariel";else activeBoard="Azphel";renderAll();return}
+   renderTabs();renderClassChecklist();
+  };
+  const x=document.createElement("button");x.textContent=b;x.className=b===activeBoard?"active":"";x.onclick=()=>{activeBoard=b;renderAll()};
+  wrap.append(cb,x);boardTabs.appendChild(wrap);
+ }
+ // Ariel and Azphel: separate currencies, set apart from the class boards. No on/off checkbox:
+ // a budget of 0 means the board is not used.
+ const sep=document.createElement("span");sep.className="tabsep";boardTabs.appendChild(sep);
+ const wrap=document.createElement("span");wrap.className="tabwrap";
+ const x=document.createElement("button");x.textContent="Ariel";x.className=activeBoard==="Ariel"?"active":"";x.onclick=()=>{activeBoard="Ariel";renderAll()};
+ wrap.append(x);boardTabs.appendChild(wrap);
+ // Azphel: separate currency; a budget of 0 means it is not used
+ const azw=document.createElement("span");azw.className="tabwrap";
+ const az=document.createElement("button");az.textContent="Azphel";az.className=activeBoard==="Azphel"?"active":"";az.onclick=()=>{activeBoard="Azphel";renderAll()};
+ azw.append(az);boardTabs.appendChild(azw);
+}
+function clampAdvancedCounts(){
+ const st=states[cls],g=classGroups(cls);
+ for(const [grade,obj] of [["legend",st.skillCounts],["rare",st.passiveCounts],["unique",st.uniqueCounts]])
+  for(const s of g[grade].keys())obj[s]=Math.min(Math.max(0,obj[s]||0),enabledGroupCount(cls,grade,s));
+}
+function attachDragList(list,onDone){
+ list.addEventListener("dragover",e=>{
+  e.preventDefault();
+  const dragging=list.querySelector(".dragging");if(!dragging)return;
+  const after=[...list.querySelectorAll(".priority-item:not(.dragging)")].find(el=>e.clientY<=el.getBoundingClientRect().top+el.getBoundingClientRect().height/2);
+  after?list.insertBefore(dragging,after):list.appendChild(dragging);
+ });
+}
+function draggableSection(parent,title,items,arrKey,target="class",enableSet=null){
+ const hd=document.createElement("div");hd.className="groupTitle";hd.textContent=title;parent.appendChild(hd);
+ const list=document.createElement("div");list.className="priority-list";parent.appendChild(list);
+ const getState=()=>target==="az"?azStates[cls]:target==="ar"?arStates[cls]:states[cls];
+ const markTargetDirty=()=>target==="az"?markAzDirty():target==="ar"?markArDirty():markClassDirty();
+ const commit=()=>{
+  getState()[arrKey]=[...list.querySelectorAll(".priority-item")].map(x=>x.dataset.sig);
+  [...list.querySelectorAll(".rank")].forEach((el,i)=>el.textContent=i+1);
+  markTargetDirty();
+ };
+ items.forEach((g,idx)=>{
+  const row=document.createElement("div");
+  row.className="priority-item"+(enableSet&&!enableSet.has(g.sig)?" off":"");
+  row.draggable=true;row.dataset.sig=g.sig;
+  if(enableSet){
+   const cb=document.createElement("input");
+   cb.type="checkbox";cb.className="toggle";cb.checked=enableSet.has(g.sig);
+   cb.title=cb.checked?"Allowed / prioritized":"Avoid if possible";
+   cb.onchange=e=>{
+    e.stopPropagation();
+    cb.checked?enableSet.add(g.sig):enableSet.delete(g.sig);
+    row.classList.toggle("off",!cb.checked);
+    cb.title=cb.checked?"Allowed / prioritized":"Avoid if possible";
+    markTargetDirty();
+   };
+   row.appendChild(cb);
+  }
+  const drag=document.createElement("span");drag.className="drag";drag.textContent="☰";
+  const rank=document.createElement("span");rank.className="rank";rank.textContent=idx+1;
+  const tx=document.createElement("span");tx.className="ptext";
+  tx.innerHTML=`<b>${displayGroupName(g)}</b><small>${g.effect} • ${g.count} nodes</small>`;
+  const mv=moveButtons(row,list,commit);
+  row.append(drag,rank,tx,mv);
+  row.addEventListener("dragstart",e=>{if(e.target&&e.target.classList&&e.target.classList.contains("toggle")){e.preventDefault();return}row.classList.add("dragging")});
+  row.addEventListener("dragend",()=>{row.classList.remove("dragging");commit()});
+  list.appendChild(row);
+ });
+ attachDragList(list);
+}
+// Up/down buttons as an alternative to drag-and-drop (drag doesn't work on touch screens).
+function moveButtons(row,list,commit){
+ const w=document.createElement("span");w.className="mv";
+ for(const [t,dir] of [["▲",-1],["▼",1]]){
+  const b=document.createElement("button");b.type="button";b.textContent=t;b.title=dir<0?"Move up":"Move down";
+  b.onclick=e=>{e.stopPropagation();
+   if(dir<0&&row.previousElementSibling)list.insertBefore(row,row.previousElementSibling);
+   else if(dir>0&&row.nextElementSibling)list.insertBefore(row.nextElementSibling,row);
+   else return;commit()};
+  w.appendChild(b);
+ }
+ return w;
+}
+function modeButtons(parent,label,key){
+ const bar=document.createElement("div");bar.className="modebar";
+ const l=document.createElement("span");l.className="label";l.textContent=label;
+ for(const mode of ["basic","advanced"]){
+  const b=document.createElement("button");b.textContent=mode[0].toUpperCase()+mode.slice(1);b.className=states[cls][key]===mode?"active":"";
+  b.onclick=()=>{states[cls][key]=mode;markClassDirty();renderClassChecklist()};bar.appendChild(b);
+ }
+ bar.prepend(l);parent.appendChild(bar);
+}
+function gradeForGroup(g){
+ const cg=classGroups(cls);
+ for(const grade of ["common","legend","rare","unique"])if(cg[grade].has(g.sig))return grade;
+ return "";
+}
+function basicChecks(parent,title,items,set){
+ const hd=document.createElement("div");hd.className="groupTitle";hd.textContent=title;parent.appendChild(hd);
+ const grid=document.createElement("div");grid.className="checkgrid";parent.appendChild(grid);
+ for(const g of items){
+  const lab=document.createElement("label");lab.className="choice";
+  const cb=document.createElement("input");cb.type="checkbox";cb.checked=set.has(g.sig);
+  cb.onchange=()=>{cb.checked?set.add(g.sig):set.delete(g.sig);markClassDirty()};
+  const sp=document.createElement("span");sp.innerHTML=`<b>${displayGroupName(g)}</b><small>${g.effect} • ${enabledGroupCount(cls,gradeForGroup(g),g.sig)} available on enabled boards</small>`;
+  lab.append(cb,sp);grid.appendChild(lab);
+ }
+}
+function advancedCounts(parent,title,items,countObj,grade){
+ const hd=document.createElement("div");hd.className="groupTitle";hd.textContent=title;parent.appendChild(hd);
+ const grid=document.createElement("div");grid.className="advanced-grid";parent.appendChild(grid);
+ for(const g of items){
+  const max=enabledGroupCount(cls,grade,g.sig),row=document.createElement("div");row.className="advrow";
+  const tx=document.createElement("span");tx.className="ptext";tx.innerHTML=`<b>${displayGroupName(g)}</b><small>${g.effect}</small>`;
+  const inp=document.createElement("input");inp.className="countbox";inp.type="number";inp.min="0";inp.max=String(max);inp.value=String(Math.min(max,countObj[g.sig]||0));
+  inp.oninput=()=>{let v=parseInt(inp.value||"0",10);v=Math.max(0,Math.min(max,isNaN(v)?0:v));countObj[g.sig]=v;inp.value=String(v);markClassDirty()};
+  const ml=document.createElement("span");ml.className="maxlbl";ml.textContent=`/ ${max}`;
+  row.append(tx,inp,ml);grid.appendChild(row);
+ }
+}
+function renderClassChecklist(){
+ classChecklist.innerHTML="";const g=classGroups(cls),st=states[cls],lookup=gr=>new Map([...g[gr].values()].map(x=>[x.sig,x]));
+ const byName=(a,b)=>displayGroupName(a).localeCompare(displayGroupName(b));
+ draggableSection(classChecklist,"Stats priority",st.stats.map(s=>lookup("common").get(s)).filter(Boolean),"stats","class",st.statsEnabled);
+ modeButtons(classChecklist,"Skills","skillMode");
+ if(st.skillMode==="basic")basicChecks(classChecklist,"Skills — checked = all available copies",[...g.legend.values()].sort(byName),st.skillsChecked);
+ else advancedCounts(classChecklist,"Skills — exact wanted levels",[...g.legend.values()].sort(byName),st.skillCounts,"legend");
+ modeButtons(classChecklist,"Passives","passiveMode");
+ if(st.passiveMode==="basic")basicChecks(classChecklist,"Passives — checked = all available copies",[...g.rare.values()].sort(byName),st.passivesChecked);
+ else advancedCounts(classChecklist,"Passives — exact wanted levels",[...g.rare.values()].sort(byName),st.passiveCounts,"rare");
+ modeButtons(classChecklist,"Orange uniques","uniqueMode");
+ if(st.uniqueMode==="basic")basicChecks(classChecklist,"Orange uniques — CHECKED = MUST REACH",[...g.unique.values()].sort((a,b)=>a.name.localeCompare(b.name)),st.uniquesChecked);
+ else advancedCounts(classChecklist,"Orange uniques — exact wanted copies",[...g.unique.values()].sort((a,b)=>a.name.localeCompare(b.name)),st.uniqueCounts,"unique");
+}
+function nodeEl(n,vis,onRoute,size){
+ const d=document.createElement("div");d.className=`node ${n.grade} ${vis?"sel":"dim"} ${onRoute&&n.grade!=="none"?"route":""}`;
+ if(size){d.style.width=size+"px";d.style.height=size+"px"}
+ d.style.gridRow=n.row;d.style.gridColumn=n.col;d.title=`${displayName(n)}\n${n.effect||"Start"}\nCost ${nodeCost(n)}`;
+ d.innerHTML=`<span class="txt">${displayName(n)}</span><span class="cost">${nodeCost(n)}</span>`;
+ return d;
+}
+// How many copies of each skill/passive/orange group the current route already takes (enabled boards).
+function routeGroupCounts(c,rt){
+ const m=new Map();
+ for(const b of ORDER)if(states[c].enabledBoards.has(b)){const r=rt[b]||new Set();for(const n of DATA[c][b].nodes)if(r.has(n.id)){const k=n.grade+"|"+sig(n);m.set(k,(m.get(k)||0)+1)}}
+ return m;
+}
+function renderBoard(){
+ const B=DATA[cls][activeBoard],enabled=states[cls].enabledBoards.has(activeBoard),r=enabled?(routes[cls][activeBoard]||new Set()):new Set();
+ const have=routeGroupCounts(cls,routes[cls]||{});
+ board.style.gridTemplateColumns=`repeat(${B.cols},55px)`;board.style.gridTemplateRows=`repeat(${B.rows},55px)`;board.innerHTML="";
+ for(const n of B.nodes){
+  // a wanted copy stays highlighted only while the route is still short of the wanted number
+  const d=enabled?desiredCount(cls,n):0,wanted=d>0&&(have.get(n.grade+"|"+sig(n))||0)<d;
+  const vis=n.grade==="none"||(enabled&&(r.has(n.id)||wanted));
+  const el=nodeEl(n,vis,enabled&&r.has(n.id));
+  if(offerHighlight&&offerHighlight.key.startsWith(cls+"|")&&offerHighlight.board===activeBoard&&offerHighlight.ids.has(n.id))el.classList.add("offerpath");
+  board.appendChild(el);
+ }
+}
+// ---------- ASK-TO-CROSS OFFERS ----------
+// A checked stat reachable only through skipped nodes is offered here with its cheapest route.
+// Yes: those skipped nodes are allowed and the optimizer runs again. No: this offer is not shown again.
+let offerHighlight=null;
+function findClassNode(id){for(const b of ORDER){const n=DATA[cls][b].nodes.find(x=>x.id===id);if(n)return{b,n}}return null}
+function crossWhy(x){
+ const f=findClassNode(x.id);if(f&&desiredCount(cls,f.n)>0)return"an extra copy beyond the number you asked for";
+ return x.grade==="unique"?"an unchecked orange":x.grade==="legend"?"an unchecked skill":"an unchecked passive";
+}
+function esc(t){return String(t).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]))}
+function renderOffers(){
+ crossOffers.innerHTML="";
+ if(isSingleTab())return;
+ const st=states[cls],res=lastClassResult[cls]||{};
+ const offers=dirty[cls]?[]:(res.offers||[]);
+ for(const o of offers){
+  const d=document.createElement("div");d.className="offer";
+  const tg=o.targets.map(t=>`<b>${esc(t.name)}</b> (${o.board} ${t.row},${t.col})`).join(", ");
+  const cr=o.cross.map(x=>`<b>${esc(x.name)}</b> (${x.row},${x.col}, ${x.cost} crystal${x.cost===1?"":"s"}; ${crossWhy(x)})`).join(" and ");
+  const costs=o.targets.length===1?`${o.cost} crystals`:o.targets.map(t=>`${esc(t.name)} ${t.row},${t.col}: ${t.cost} crystals`).join(", ");
+  d.innerHTML=`${tg} ${o.targets.length===1?"is":"are"} a ticked stat the planner skipped, because the only way there goes through ${cr}.<br>
+   Cheapest route from your current route: ${costs}. Take this route? The optimizer will run again, and other picks may change to pay for it.
+   <div class="acts"><button class="yes">Yes, take this route</button><button class="no">No</button><button class="show">Show on board</button></div>`;
+  d.querySelector(".yes").onclick=()=>{approveCrossing(cls,o);offerHighlight=null;runCurrentOptimize()};
+  d.querySelector(".no").onclick=()=>{declineCrossing(cls,o);res.offers=res.offers.filter(x=>x!==o);if(offerHighlight&&offerHighlight.key===o.key){offerHighlight=null;renderBoard()}renderOffers()};
+  d.querySelector(".show").onclick=()=>{offerHighlight={key:o.key,board:o.board,ids:new Set(o.targets.flatMap(t=>t.path))};
+   if(activeBoard!==o.board){activeBoard=o.board;renderAll()}else renderBoard()};
+  crossOffers.appendChild(d);
+ }
+ for(const id of st.crossAllowed){
+  const f=findClassNode(id);if(!f)continue;
+  const used=(routes[cls][f.b]||new Set()).has(id);
+  const d=document.createElement("div");d.className="offer ok";
+  d.innerHTML=`You allowed crossing <b>${esc(displayName(f.n))}</b> (${f.b} ${f.n.row},${f.n.col}). ${dirty[cls]?"":used?"It is used in the current route.":"It is not used in the current route."}
+   <div class="acts"><button class="undo">Undo</button></div>`;
+  d.querySelector(".undo").onclick=()=>{st.crossAllowed.delete(id);markClassDirty()};
+  crossOffers.appendChild(d);
+ }
+ if(st.crossDeclined.size&&!dirty[cls]){
+  const d=document.createElement("div");d.className="offer";
+  d.innerHTML=`You said no to ${st.crossDeclined.size} route offer${st.crossDeclined.size===1?"":"s"}. <div class="acts"><button class="again">Ask me again</button></div>`;
+  d.querySelector(".again").onclick=()=>{st.crossDeclined.clear();markClassDirty()};
+  crossOffers.appendChild(d);
+ }
+}
+function parseEffect(e){const m=e.match(/^(.*?)(?:\s*\+)([\d.]+)(%)?$/);return m?{label:m[1].trim(),value:+m[2],pct:!!m[3]}:null}
+function aggregate(nodes){
+ const m=new Map();
+ for(const n of nodes){const p=parseEffect(n.effect);if(!p)continue;const k=p.label+"|"+p.pct;if(!m.has(k))m.set(k,{...p});else m.get(k).value+=p.value}
+ return[...m.values()].sort((a,b)=>a.label.localeCompare(b.label));
+}
+function fmt(x){return Number.isInteger(x)?x:x.toFixed(2).replace(/0+$/,"").replace(/\.$/,"")}
+function fillStats(id,a){$(id).innerHTML=a.length?a.map(x=>`<div class="sumrow"><span>${x.label}</span><b>+${fmt(x.value)}${x.pct?"%":""}</b></div>`).join(""):'<div class="empty">None</div>'}
+function fillLevels(id,arr){$(id).innerHTML=arr.length?arr.map(x=>`<div class="sumrow"><span>${x.name}</span><b>+${x.level}</b></div>`).join(""):'<div class="empty">None</div>'}
+const levelSorter=m=>[...m.entries()].map(([name,level])=>({name,level})).sort((a,b)=>b.level-a.level||a.name.localeCompare(b.name));
+function renderBuffSummary(rt){
+ const stats=[],skills=new Map(),passives=new Map(),uniques=new Map();
+ for(const b of ORDER)if(states[cls].enabledBoards.has(b)){
+  const B=DATA[cls][b],r=rt[b]||new Set();
+  for(const n of B.nodes)if(r.has(n.id)&&n.grade!=="none"){
+   if(n.grade==="common")stats.push(n);
+   else{const target=n.grade==="legend"?skills:n.grade==="rare"?passives:uniques;const name=displayName(n);target.set(name,(target.get(name)||0)+1)}
+  }
+ }
+ fillStats("statBuffs",aggregate(stats));
+ fillLevels("skillBuffs",levelSorter(skills));fillLevels("passiveBuffs",levelSorter(passives));fillLevels("uniqueBuffs",levelSorter(uniques));
+}
+function renderClassMetrics(result){
+ const rt=result.routes,B=DATA[cls][activeBoard],enabled=states[cls].enabledBoards.has(activeBoard),br=enabled?(rt[activeBoard]||new Set()):new Set();
+ let bc=0,total=0;for(const n of B.nodes)if(br.has(n.id)&&n.grade!=="none")bc+=nodeCost(n);
+ for(const b of ORDER)if(states[cls].enabledBoards.has(b))for(const n of DATA[cls][b].nodes)if((rt[b]||new Set()).has(n.id)&&n.grade!=="none")total+=nodeCost(n);
+ const reached=reachedTotals(cls,rt),wanted=desiredTotals(cls),enabledCount=states[cls].enabledBoards.size;
+ boardCost.textContent=bc;totalCost.textContent=total;remain.textContent=Math.max(0,result.remaining);remain.className=result.remaining===0?"ok":"warn";specialsHit.textContent=`${reached}/${wanted}`;
+ classStatus.textContent=result.remaining===0
+  ?`All ${states[cls].budget} Daevanion Crystals spent across ${enabledCount} enabled board${enabledCount===1?"":"s"}.`
+  :`${result.remaining} crystal${result.remaining===1?"":"s"} remain after exhausting reachable choices on the enabled boards.`;
+ renderBuffSummary(rt);
+}
+dBudget.oninput=e=>{
+ const d=e.target.value.replace(/\D/g,"");e.target.value=d;
+ if(activeBoard==="Azphel"){azStates[cls].budget=d?parseInt(d,10):0;markAzDirty()}
+ else if(activeBoard==="Ariel"){arStates[cls].budget=d?parseInt(d,10):0;markArDirty()}
+ else{states[cls].budget=d?parseInt(d,10):0;markClassDirty()}
+};
+
+// ---------- AZPHEL ----------
+function secondAzEffect(name){
+ if(name==="PvP Critical Hit, PvP Critical Hit Resist")return"PvP Critical Hit Resist +5";
+ if(name==="PvP Accuracy, PvP Evasion")return"PvP Evasion +3";
+ if(name==="PvP Attack, PvP Defense")return"PvP Defense +30";
+ return"";
+}
+function checkSectionGeneric(parent,title,items,set,onchange){
+ const hd=document.createElement("div");hd.className="groupTitle";hd.textContent=title;parent.appendChild(hd);
+ const grid=document.createElement("div");grid.className="checkgrid";parent.appendChild(grid);
+ for(const g of items){
+  const lab=document.createElement("label");lab.className="choice";const cb=document.createElement("input");cb.type="checkbox";cb.checked=set.has(g.sig);
+  cb.onchange=()=>{cb.checked?set.add(g.sig):set.delete(g.sig);onchange()};
+  const sp=document.createElement("span");sp.innerHTML=`<b>${displayGroupName(g)}</b><small>${g.effect} • ${g.count} nodes</small>`;lab.append(cb,sp);grid.appendChild(lab);
+ }
+}
+function azModeButtons(parent,label,key){
+ const bar=document.createElement("div");bar.className="modebar";
+ const l=document.createElement("span");l.className="label";l.textContent=label;bar.appendChild(l);
+ for(const mode of ["basic","advanced"]){
+  const b=document.createElement("button");b.textContent=mode[0].toUpperCase()+mode.slice(1);b.className=azStates[cls][key]===mode?"active":"";
+  b.onclick=()=>{azStates[cls][key]=mode;markAzDirty();renderAzChecklist()};bar.appendChild(b);
+ }
+ parent.appendChild(bar);
+}
+function azAdvancedRareSection(parent,items){
+ const st=azStates[cls],hd=document.createElement("div");hd.className="groupTitle";hd.textContent="Green rare priority — exact wanted copies";parent.appendChild(hd);
+ const list=document.createElement("div");list.className="priority-list";parent.appendChild(list);
+ const commit=()=>{st.rare=[...list.querySelectorAll(".priority-item")].map(x=>x.dataset.sig);[...list.querySelectorAll(".rank")].forEach((el,i)=>el.textContent=i+1);markAzDirty()};
+ items.forEach((g,idx)=>{
+  const enabled=st.rareEnabled.has(g.sig),row=document.createElement("div");row.className="priority-item"+(enabled?"":" off");row.draggable=true;row.dataset.sig=g.sig;
+  const cb=document.createElement("input");cb.type="checkbox";cb.className="toggle";cb.checked=enabled;
+  cb.onchange=e=>{e.stopPropagation();cb.checked?st.rareEnabled.add(g.sig):st.rareEnabled.delete(g.sig);row.classList.toggle("off",!cb.checked);markAzDirty()};
+  const drag=document.createElement("span");drag.className="drag";drag.textContent="☰";
+  const rank=document.createElement("span");rank.className="rank";rank.textContent=idx+1;
+  const tx=document.createElement("span");tx.className="ptext";const sec=secondAzEffect(g.name);tx.innerHTML=`<b>${displayGroupName(g)}</b><small>${g.effect}${sec?` + ${sec}`:""}</small>`;
+  const inp=document.createElement("input");inp.className="countbox";inp.type="number";inp.min="0";inp.max=String(g.count);inp.value=String(Math.min(g.count,st.rareCounts[g.sig]||0));
+  inp.oninput=()=>{let v=parseInt(inp.value||"0",10);v=Math.max(0,Math.min(g.count,isNaN(v)?0:v));st.rareCounts[g.sig]=v;inp.value=String(v);if(v>0){st.rareEnabled.add(g.sig);cb.checked=true;row.classList.remove("off")}markAzDirty()};
+  const max=document.createElement("span");max.className="maxlbl";max.textContent=`/ ${g.count}`;
+  row.append(cb,drag,rank,tx,inp,max,moveButtons(row,list,commit));
+  row.addEventListener("dragstart",e=>{if(e.target===cb||e.target===inp){e.preventDefault();return}row.classList.add("dragging")});
+  row.addEventListener("dragend",()=>{row.classList.remove("dragging");commit()});
+  list.appendChild(row);
+ });
+ attachDragList(list);
+}
+function renderAzChecklist(){
+ const azChecklist=classChecklist;azChecklist.innerHTML="";className.textContent="Azphel";const g=azGroups(),st=azStates[cls],lookup=gr=>new Map([...g[gr].values()].map(x=>[x.sig,x]));
+ draggableSection(azChecklist,"Normal bonus priority",st.common.map(s=>lookup("common").get(s)).filter(Boolean),"common","az",st.commonEnabled);
+ azModeButtons(azChecklist,"Green rare","rareMode");
+ const rareItems=st.rare.map(s=>lookup("rare").get(s)).filter(Boolean);
+ if(st.rareMode==="basic")draggableSection(azChecklist,"Green rare priority — two-stat bonuses",rareItems.map(x=>({...x,effect:x.effect+(secondAzEffect(x.name)?` + ${secondAzEffect(x.name)}`:"")})),"rare","az",st.rareEnabled);
+ else azAdvancedRareSection(azChecklist,rareItems);
+ checkSectionGeneric(azChecklist,"Blue legend — optional",[...g.legend.values()].sort((a,b)=>a.name.localeCompare(b.name)),st.legend,markAzDirty);
+ checkSectionGeneric(azChecklist,"Orange unique — CHECKED = MUST REACH",[...g.unique.values()].sort((a,b)=>a.name.localeCompare(b.name)),st.unique,markAzDirty);
+}
+function renderAzFromResult(res){
+ const B=DATA.Azphel,st=azStates[cls];st.route=res.route;
+ if(activeBoard!=="Azphel")return;
+ const r=res.route;let spent=0,hit=0,total=0,fill=0;const ns=[];
+ for(const s of azGroups().rare.keys()){const want=azDesiredCountBySig(s),got=Math.min(want,azCurrentRareCount(r,s));total+=want;hit+=got}
+ for(const n of B.nodes){
+  if(n.grade==="legend"&&st.legend.has(nsig(n))){total++;if(r.has(n.id))hit++}
+  if(n.grade==="unique"&&st.unique.has(nsig(n))){total++;if(r.has(n.id))hit++}
+  if(r.has(n.id)&&n.grade!=="none"){spent+=nodeCost(n);ns.push(n)}
+ }
+ for(const n of ns){
+  const s=nsig(n);
+  if(n.grade==="common"&&!st.commonEnabled.has(s))fill++;
+  else if(n.grade==="rare"&&!st.rareEnabled.has(s))fill++;
+  else if(n.grade==="legend"&&!st.legend.has(s))fill++;
+  else if(n.grade==="unique"&&!st.unique.has(s))fill++;
+ }
+ boardCost.textContent=spent;totalCost.textContent=spent;remain.textContent=Math.max(0,res.remaining);remain.className=res.remaining===0?"ok":"warn";specialsHit.textContent=`${hit}/${total}`;
+ classStatus.textContent=(res.remaining===0?`All ${st.budget} Azphel Crystals spent.`:`${res.remaining} Azphel Crystal${res.remaining===1?"":"s"} remain.`)+(fill?` ${fill} extra filler node${fill===1?"":"s"}.`:"");
+ const azBoard=board;
+ azBoard.style.gridTemplateColumns=`repeat(${B.cols},45px)`;azBoard.style.gridTemplateRows=`repeat(${B.rows},45px)`;azBoard.innerHTML="";
+ const have=singleHave(B,r);
+ const short=n=>{const k=nsig(n);if(n.grade==="rare")return azDesiredCountBySig(k)>(have.get(k)||0);return azDesired(n)};
+ for(const n of B.nodes)azBoard.appendChild(nodeEl(n,n.grade==="none"||r.has(n.id)||short(n),r.has(n.id),45));
+ // summary panel, laid out like Ariel's
+ const stats=[],rare=new Map(),legend=new Map(),unique=new Map(),extras=[];
+ for(const n of ns){
+  if(n.grade==="common")stats.push(n);
+  else{const t=n.grade==="rare"?rare:n.grade==="legend"?legend:unique;t.set(n.name,(t.get(n.name)||0)+1);
+   if(n.grade==="rare"){const e=secondAzEffect(n.name);if(e)extras.push({effect:e})}}
+ }
+ fillStats("statBuffs",aggregate([...stats,...extras]));
+ fillLevels("skillBuffs",levelSorter(rare));fillLevels("passiveBuffs",levelSorter(legend));fillLevels("uniqueBuffs",levelSorter(unique));
+ sumTitle1.textContent="Stats";sumTitle2.textContent="Green rare bonuses";sumTitle3.textContent="Blue legend bonuses";sumTitle4.textContent="Orange uniques";
+}
+
+// ---------- ARIEL ----------
+function arSecondEffect(name){
+ if(name==="PvE Accuracy, PvE Evasion")return"PvE Evasion +5";
+ if(name==="PvE Attack, PvE Defense")return"PvE Defense +30";
+ if(name==="Boss Attack, Boss Defense")return"Boss Defense +30";
+ return"";
+}
+function renderArielChecklist(){
+ classChecklist.innerHTML="";className.textContent="Ariel";
+ const g=arGroups(),st=arStates[cls],lookup=gr=>new Map([...g[gr].values()].map(x=>[x.sig,x]));
+ draggableSection(classChecklist,"Normal priority",st.common.map(s=>lookup("common").get(s)).filter(Boolean),"common","ar",st.commonEnabled);
+ const rareItems=st.rare.map(s=>lookup("rare").get(s)).filter(Boolean).map(x=>({...x,effect:x.effect+(arSecondEffect(x.name)?` + ${arSecondEffect(x.name)}`:"")}));
+ draggableSection(classChecklist,"Green rare priority",rareItems,"rare","ar",st.rareEnabled);
+ arCapSection("legend","Blue legend","Blue legend — optional","Blue legend — exact wanted copies",g);
+ arCapSection("unique","Orange unique","Orange unique — CHECKED = MUST REACH","Orange unique — exact wanted copies (must reach)",g);
+}
+// Ariel blue/orange: Basic = checkbox (all copies), Advanced = exact number of copies.
+function arCapSection(grade,label,basicTitle,advTitle,g){
+ const st=arStates[cls],modeKey=grade+"Mode",set=st[grade],counts=st[grade+"Counts"];
+ const items=[...g[grade].values()].sort((a,b)=>a.name.localeCompare(b.name));
+ const bar=document.createElement("div");bar.className="modebar";
+ const l=document.createElement("span");l.className="label";l.textContent=label;bar.appendChild(l);
+ for(const mode of ["basic","advanced"]){
+  const b=document.createElement("button");b.textContent=mode[0].toUpperCase()+mode.slice(1);b.className=st[modeKey]===mode?"active":"";
+  b.onclick=()=>{
+   if(st[modeKey]===mode)return;
+   // carry the current choice over so switching modes doesn't silently change what you asked for
+   if(mode==="advanced")for(const x of items)counts[x.sig]=set.has(x.sig)?x.count:0;
+   else{set.clear();for(const x of items)if((counts[x.sig]||0)>0)set.add(x.sig)}
+   st[modeKey]=mode;markArDirty();renderArielChecklist();
+  };
+  bar.appendChild(b);
+ }
+ classChecklist.appendChild(bar);
+ if(st[modeKey]==="basic"){checkSectionGeneric(classChecklist,basicTitle,items,set,markArDirty);return}
+ const hd=document.createElement("div");hd.className="groupTitle";hd.textContent=advTitle;classChecklist.appendChild(hd);
+ const grid=document.createElement("div");grid.className="advanced-grid";classChecklist.appendChild(grid);
+ for(const x of items){
+  const row=document.createElement("div");row.className="advrow";
+  const tx=document.createElement("span");tx.className="ptext";tx.innerHTML=`<b>${displayGroupName(x)}</b><small>${x.effect}</small>`;
+  const inp=document.createElement("input");inp.className="countbox";inp.type="number";inp.min="0";inp.max=String(x.count);inp.value=String(Math.min(x.count,counts[x.sig]||0));
+  inp.oninput=()=>{let v=parseInt(inp.value||"0",10);v=Math.max(0,Math.min(x.count,isNaN(v)?0:v));counts[x.sig]=v;inp.value=String(v);markArDirty()};
+  const ml=document.createElement("span");ml.className="maxlbl";ml.textContent=`/ ${x.count}`;
+  row.append(tx,inp,ml);grid.appendChild(row);
+ }
+}
+function singleHave(B,r){const m=new Map();for(const n of B.nodes)if(r.has(n.id)){const k=nsig(n);m.set(k,(m.get(k)||0)+1)}return m}
+function renderArielBoard(){
+ const B=DATA.Ariel,st=arStates[cls],r=st.route||new Set(),have=singleHave(B,r);
+ board.style.gridTemplateColumns=`repeat(${B.cols},45px)`;board.style.gridTemplateRows=`repeat(${B.rows},45px)`;board.innerHTML="";
+ const short=n=>{const k=nsig(n);if(n.grade==="legend"||n.grade==="unique")return capDesired("ar",n.grade,k)>(have.get(k)||0);return arWanted(n)};
+ for(const n of B.nodes)board.appendChild(nodeEl(n,n.grade==="none"||r.has(n.id)||short(n),r.has(n.id),45));
+}
+function renderArielSummary(){
+ const B=DATA.Ariel,st=arStates[cls],r=st.route||new Set(),stats=[],rare=new Map(),legend=new Map(),unique=new Map(),extras=[];
+ for(const n of B.nodes)if(r.has(n.id)&&n.grade!=="none"){
+  if(n.grade==="common")stats.push(n);
+  else{
+   const target=n.grade==="rare"?rare:n.grade==="legend"?legend:unique;
+   target.set(n.name,(target.get(n.name)||0)+1);
+   if(n.grade==="rare"){const e=arSecondEffect(n.name);if(e)extras.push({effect:e})}
+  }
+ }
+ fillStats("statBuffs",aggregate([...stats,...extras]));
+ fillLevels("skillBuffs",levelSorter(rare));fillLevels("passiveBuffs",levelSorter(legend));fillLevels("uniqueBuffs",levelSorter(unique));
+ sumTitle1.textContent="Stats";sumTitle2.textContent="Green rare bonuses";sumTitle3.textContent="Blue legend bonuses";sumTitle4.textContent="Orange uniques";
+}
+function renderArielMetricsFromResult(res){
+ const st=arStates[cls];st.route=res.route;
+ let spent=0,hit=0,total=0;const have=new Map();
+ for(const n of DATA.Ariel.nodes){
+  const k=nsig(n);
+  if(n.grade==="rare"&&st.rareEnabled.has(k)){total++;if(res.route.has(n.id))hit++}
+  if(res.route.has(n.id)&&n.grade!=="none"){spent+=nodeCost(n);have.set(k,(have.get(k)||0)+1)}
+ }
+ const g=arGroups();
+ for(const grade of ["legend","unique"])for(const k of g[grade].keys()){const d=capDesired("ar",grade,k);total+=d;hit+=Math.min(d,have.get(k)||0)}
+ boardCost.textContent=spent;totalCost.textContent=spent;remain.textContent=Math.max(0,res.remaining);remain.className=res.remaining===0?"ok":"warn";specialsHit.textContent=`${hit}/${total}`;
+ classStatus.textContent=!st.enabled?"Ariel is disabled.":res.remaining===0?`All ${st.budget} Ariel Crystals spent.`:`${res.remaining} Ariel Crystal${res.remaining===1?"":"s"} remain.`;
+ renderArielBoard();renderArielSummary();
+}
+function renderAll(){
+ renderClasses();renderTabs();
+ prioNote.innerHTML=activeBoard==="Azphel"?"Separate currency, kept per class. Normal bonuses: drag to reorder, untick to skip. Green rare has Basic / Advanced mode. Blue legend and orange unique are checkboxes (ticked orange = must reach).":activeBoard==="Ariel"?"Separate currency, kept per class. Normal and green rare bonuses: drag to reorder, untick to skip. Blue legend and orange unique have Basic / Advanced mode (ticked orange = must reach).":CLASS_NOTE;
+ if(activeBoard==="Azphel"){
+  budgetLabel.textContent="Azphel Crystals:";
+  budgetExample.textContent="e.g. 100 crystals";
+  budgetHint.textContent="Set Azphel priorities first, then run the optimizer when ready.";
+  dBudget.placeholder="e.g. 100";
+  dBudget.value=azStates[cls].budget?String(azStates[cls].budget):"";
+  renderAzChecklist();
+  const az=lastAzResult[cls]||{route:azStates[cls].route||new Set(),remaining:azStates[cls].budget};
+  azStates[cls].route=az.route;renderAzFromResult(az);
+  if(azDirty[cls])classStatus.innerHTML='<span class="dirty">Azphel priorities changed. Press Optimize.</span>';
+ }else if(activeBoard==="Ariel"){
+  budgetLabel.textContent="Ariel Crystals:";
+  budgetExample.textContent="e.g. 120 crystals";
+  budgetHint.textContent="Set Ariel priorities first, then run the optimizer when ready.";
+  dBudget.placeholder="e.g. 120";
+  dBudget.value=arStates[cls].budget?String(arStates[cls].budget):"";
+  renderArielChecklist();
+  const res=lastArResult[cls]||{route:arStates[cls].route||new Set(),remaining:arStates[cls].budget};
+  arStates[cls].route=res.route;
+  renderArielMetricsFromResult(res);
+  if(arDirty[cls])classStatus.innerHTML='<span class="dirty">Ariel priorities changed. Press Optimize.</span>';
+ }else{
+  budgetLabel.textContent="Daevanion Crystals:";
+  budgetExample.textContent="e.g. 412 crystals";
+  budgetHint.textContent="Set your priorities first, then run the optimizer when ready.";
+  dBudget.placeholder="e.g. 412";
+  renderClassChecklist();
+  dBudget.value=states[cls].budget?states[cls].budget:"";
+  const res=lastClassResult[cls]||{routes:routes[cls]||emptyRoutes(cls),remaining:states[cls].budget};
+  routes[cls]=res.routes;
+  renderBoard();renderClassMetrics(res);
+  sumTitle1.textContent="Stats";sumTitle2.textContent="Skills — levels";sumTitle3.textContent="Passives — levels";sumTitle4.textContent="Orange uniques";
+  if(dirty[cls])classStatus.innerHTML=DIRTY_MSG;
+ }
+ renderOffers();
+}
+optimizeBtn.onclick=runCurrentOptimize;
+renderAll();
+</script>
+</body>
+</html>
